@@ -6,6 +6,7 @@ import '../../views/tickets/ticket_list_screen.dart';
 import '../../views/tickets/ticket_detail_screen.dart';
 import '../../views/tickets/ticket_form_screen.dart';
 import '../../views/settings/settings_screen.dart';
+import '../../views/reports/reports_screen.dart';
 
 /// go_router 기반 앱 라우팅 설정
 /// ShellRoute로 사이드바/탑바를 모든 하위 라우트에서 공유
@@ -54,6 +55,12 @@ class AppRouter {
                 },
               ),
             ],
+          ),
+
+          // ── 리포트 ────────────────────────────────────────
+          GoRoute(
+            path: '/reports',
+            builder: (context, state) => const ReportsScreen(),
           ),
 
           // ── 설정 ──────────────────────────────────────────
