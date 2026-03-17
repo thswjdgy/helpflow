@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/design_system.dart';
 
 /// 티켓 목록 화면
 /// TODO: 2주차에 Hive 연동 및 실제 티켓 목록 구현 예정
@@ -8,6 +9,8 @@ class TicketListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
+      // 디자인 시스템 배경색 통일
+      backgroundColor: HelpFlowColors.background,
       body: Center(
         child: Text('티켓 관리 화면'),
       ),

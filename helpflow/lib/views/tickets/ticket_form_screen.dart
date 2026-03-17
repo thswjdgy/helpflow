@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/design_system.dart';
 
 /// 티켓 작성/수정 폼 화면
 /// /tickets/new 경로: 새 티켓 작성
@@ -9,6 +10,8 @@ class TicketFormScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
+      // 디자인 시스템 배경색 통일
+      backgroundColor: HelpFlowColors.background,
       body: Center(
         child: Text('티켓 작성 화면'),
       ),
