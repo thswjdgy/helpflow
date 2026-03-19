@@ -6,9 +6,8 @@ import 'core/theme/app_theme.dart';
 import 'providers/theme_provider.dart';
 
 /// 앱 루트 위젯
-/// - Riverpod ConsumerWidget으로 themeProvider를 구독
-/// - 다크모드 상태에 따라 ThemeMode 동적 전환
-/// - MaterialApp.router로 go_router 연동
+/// - themeProvider 로 라이트/다크 테마를 동적 전환
+/// - routerProvider 로 인증 상태 기반 go_router 연동
 class App extends ConsumerWidget {
   const App({super.key});
 
@@ -17,8 +16,10 @@ class App extends ConsumerWidget {
     // 다크모드 상태 구독 (변경 시 자동 리빌드)
     final isDark = ref.watch(themeProvider);
 
+    // routerProvider: 인증 리다이렉트가 포함된 GoRouter 인스턴스
+    final router = ref.watch(routerProvider);
+
     return MaterialApp.router(
-      // 앱 제목
       title: AppStrings.appName,
 
       // 다크모드 여부에 따라 ThemeMode 결정
@@ -30,8 +31,8 @@ class App extends ConsumerWidget {
       // 다크 테마
       darkTheme: AppTheme.darkTheme,
 
-      // go_router 연동
-      routerConfig: AppRouter.router,
+      // 인증 리다이렉트가 포함된 GoRouter 연결
+      routerConfig: router,
 
       // 디버그 배너 숨김
       debugShowCheckedModeBanner: false,
@@ -41,5 +42,5 @@ class App extends ConsumerWidget {
 
 // [파일 요약]
 // 앱 루트 위젯(App)을 정의합니다.
-// Riverpod ConsumerWidget으로 themeProvider를 구독하여 라이트/다크 테마를 동적으로 전환하고,
-// MaterialApp.router에 AppRouter.router를 연결합니다.
+// themeProvider 로 라이트/다크 테마를 동적 전환하고,
+// routerProvider(인증 리다이렉트 포함)를 MaterialApp.router 에 연결합니다.

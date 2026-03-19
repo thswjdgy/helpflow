@@ -17,8 +17,8 @@ class HelpFlowColors {
   /// 앱 전체 배경색 (순백색)
   static const Color background = Color(0xFFFFFFFF);
 
-  /// 카드·컨테이너 표면색
-  static const Color surface = Color(0xFFF8F9FA);
+  /// 카드·컨테이너 표면색 (라이트 모드 기준 순백 — 테두리로 배경과 구분)
+  static const Color surface = Color(0xFFFFFFFF);
 
   /// 연한 회색 — 구분선·비활성 배경
   static const Color gray100 = Color(0xFFF2F3F5);
@@ -152,7 +152,7 @@ class HelpFlowSpacing {
 
 // [파일 요약]
 // HelpFlow 통합 디자인 시스템 파일입니다.
-// HelpFlowColors  : 토스 스타일 색상 팔레트 (primary #0057FF, background #FFFFFF, surface, gray 계열, error)
+// HelpFlowColors  : 색상 팔레트 (primary #0057FF, background #FFFFFF, surface #FFFFFF, gray 계열, error)
 // HelpFlowTextStyles : 시스템 폰트 텍스트 스타일 (headline1~3, body1~2, caption, button)
 // HelpFlowButtonStyles: FilledButton / OutlinedButton / TextButton 스타일 (radius 12, 넉넉한 패딩)
 // HelpFlowSpacing : 4 / 8 / 12 / 16 / 20 / 24 / 32px 여백 상수 체계

@@ -1,51 +1,88 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../views/layout/main_layout.dart';
+import '../../features/auth/auth_provider.dart';
+import '../../features/auth/login_screen.dart';
 import '../../views/dashboard/dashboard_screen.dart';
-import '../../views/tickets/ticket_list_screen.dart';
+import '../../views/layout/main_layout.dart';
+import '../../views/reports/reports_screen.dart';
+import '../../views/settings/settings_screen.dart';
 import '../../views/tickets/ticket_detail_screen.dart';
 import '../../views/tickets/ticket_form_screen.dart';
-import '../../views/settings/settings_screen.dart';
-import '../../views/reports/reports_screen.dart';
+import '../../views/tickets/ticket_list_screen.dart';
+import 'router_notifier.dart';
 
-/// go_router 기반 앱 라우팅 설정
-/// ShellRoute로 사이드바/탑바를 모든 하위 라우트에서 공유
-class AppRouter {
-  AppRouter._(); // 인스턴스 생성 방지
+/// go_router 인스턴스를 Riverpod Provider 로 제공
+/// - RouterNotifier 를 refreshListenable 로 등록해 인증 상태 변화 시 redirect 재실행
+/// - 비로그인 → /login, 로그인 상태 → /dashboard 로 자동 분기
+final routerProvider = Provider<GoRouter>((ref) {
+  // 인증 상태 변화를 GoRouter 에 전달하는 ChangeNotifier
+  final notifier = ref.watch(routerNotifierProvider);
 
-  /// 앱 전체에서 사용하는 GoRouter 인스턴스 (싱글톤)
-  static final GoRouter router = GoRouter(
-    initialLocation: '/dashboard',
+  return GoRouter(
+    initialLocation: '/login', // 앱 시작 지점 (인증 확인 전 로그인 화면)
+    refreshListenable: notifier, // 인증 변경 시 redirect 재평가 트리거
     debugLogDiagnostics: false,
+
+    /// 인증 상태 기반 리다이렉트 함수
+    /// 매 네비게이션마다 호출되어 로그인 여부에 따라 경로를 강제 결정한다.
+    /// - 로딩 중에도 /login 이외의 경로는 /login 으로 강제 이동 (대시보드 flash 방지)
+    /// - 뒤로가기 우회 불가: redirect 는 router.go() 와 동일하게 히스토리를 교체하므로
+    ///   /dashboard 에서 뒤로가기를 눌러도 /login 으로 돌아갈 수 없다.
+    redirect: (BuildContext context, GoRouterState state) {
+      final authState = ref.read(authProvider);
+      final isOnLogin = state.uri.path == '/login';
+
+      // ① 인증 확인 중: /login 이 아닌 모든 경로를 /login 으로 강제 이동
+      //    (web URL 직접 입력 시 대시보드가 찰나 표시되는 flash 를 차단)
+      if (authState.isLoading) {
+        return isOnLogin ? null : '/login';
+      }
+
+      final isLoggedIn = authState.valueOrNull != null;
+
+      // ② 비로그인 상태 + /login 이 아닌 경로 → /login 으로 강제 이동
+      if (!isLoggedIn && !isOnLogin) return '/login';
+
+      // ③ 로그인 완료 + /login 화면 → /dashboard 로 자동 이동
+      if (isLoggedIn && isOnLogin) return '/dashboard';
+
+      return null; // 리다이렉트 필요 없음
+    },
+
     routes: [
+      // ── 로그인 화면 (ShellRoute 밖 — 사이드바/탑바 없음) ──
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginScreen(),
+      ),
+
       // ── ShellRoute: MainLayout(사이드바+탑바)를 공유하는 쉘 ──
       ShellRoute(
         builder: (BuildContext context, GoRouterState state, Widget child) {
-          // state.uri.path를 MainLayout에 전달하여 현재 경로 기반 UI 업데이트
+          // 현재 경로를 MainLayout 에 전달해 사이드바 활성 항목 표시
           return MainLayout(
             currentLocation: state.uri.path,
             child: child,
           );
         },
         routes: [
-          // ── 대시보드 ──────────────────────────────────────
+          // ── 대시보드 ────────────────────────────────────────
           GoRoute(
             path: '/dashboard',
             builder: (context, state) => const DashboardScreen(),
           ),
 
-          // ── 티켓 목록 + 하위 라우트 ───────────────────────
+          // ── 티켓 목록 + 하위 라우트 ─────────────────────────
           GoRoute(
             path: '/tickets',
             builder: (context, state) => const TicketListScreen(),
             routes: [
-              // 새 티켓 작성 (/tickets/new)
-              // 주의: :id보다 먼저 선언해야 'new'가 파라미터로 잘못 해석되지 않음
+              // 새 티켓 (/tickets/new) — :id 보다 먼저 선언해 충돌 방지
               GoRoute(
                 path: 'new',
                 builder: (context, state) => const TicketFormScreen(),
               ),
-
               // 티켓 상세 (/tickets/:id)
               GoRoute(
                 path: ':id',
@@ -57,13 +94,13 @@ class AppRouter {
             ],
           ),
 
-          // ── 리포트 ────────────────────────────────────────
+          // ── 리포트 ──────────────────────────────────────────
           GoRoute(
             path: '/reports',
             builder: (context, state) => const ReportsScreen(),
           ),
 
-          // ── 설정 ──────────────────────────────────────────
+          // ── 설정 ────────────────────────────────────────────
           GoRoute(
             path: '/settings',
             builder: (context, state) => const SettingsScreen(),
@@ -72,7 +109,7 @@ class AppRouter {
       ),
     ],
 
-    // ── 에러 페이지 ──────────────────────────────────────────
+    // ── 에러 페이지 ────────────────────────────────────────────
     errorBuilder: (context, state) => Scaffold(
       body: Center(
         child: Column(
@@ -96,10 +133,12 @@ class AppRouter {
       ),
     ),
   );
-}
+});
 
+// ============================================================
 // [파일 요약]
-// go_router v14 기반 앱 라우팅 설정입니다.
-// ShellRoute로 MainLayout(사이드바+탑바)을 모든 화면에서 공유하며,
-// 경로 구조: /dashboard, /tickets, /tickets/new, /tickets/:id, /settings
-// /tickets/new는 :id 파라미터 충돌 방지를 위해 :id보다 먼저 선언합니다.
+// 파일명: app_router.dart
+// 역할: go_router 기반 라우팅 설정 + Riverpod 인증 상태 연동 리다이렉트 (로그인 필수)
+// 주요 클래스/함수: routerProvider
+// 연관 파일: router_notifier.dart, auth_provider.dart, login_screen.dart, main_layout.dart
+// ============================================================

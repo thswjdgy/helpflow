@@ -54,8 +54,8 @@ class TopBarWidget extends ConsumerWidget implements PreferredSizeWidget {
     final showNewTicketButton = !currentLocation.startsWith('/tickets/');
 
     return AppBar(
-      backgroundColor: colorScheme.surface,
-      surfaceTintColor: colorScheme.surfaceTint,
+      // backgroundColor 미지정 → app_theme.dart AppBarTheme 값 자동 적용
+      // 라이트: #FFFFFF / 다크: #1E1E1E (사이드바와 통일)
       elevation: 0,
       scrolledUnderElevation: 1,
 
