@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_sizes.dart';
-import '../../core/design_system.dart';
 import 'sidebar_widget.dart';
 import 'top_bar_widget.dart';
 
@@ -64,7 +63,7 @@ class _DesktopLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: HelpFlowColors.background,
+      // backgroundColor 미지정 → 테마의 scaffoldBackgroundColor 자동 적용
       body: Row(
         children: [
           // 좌측 고정 사이드바 (아이콘 + 레이블)
@@ -102,7 +101,7 @@ class _TabletLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: HelpFlowColors.background,
+      // backgroundColor 미지정 → 테마의 scaffoldBackgroundColor 자동 적용
       body: Row(
         children: [
           // 좌측 미니 레일 (아이콘만 표시)
@@ -157,7 +156,7 @@ class _MobileLayout extends StatelessWidget {
     final selectedIndex = _getSelectedIndex(currentLocation);
 
     return Scaffold(
-      backgroundColor: HelpFlowColors.background,
+      // backgroundColor 미지정 → 테마의 scaffoldBackgroundColor 자동 적용
 
       // 상단 탑바 (햄버거 메뉴 없음 — Drawer 대신 하단 탭 사용)
       appBar: TopBarWidget(currentLocation: currentLocation),
@@ -209,4 +208,4 @@ class _MobileLayout extends StatelessWidget {
 // - 데스크탑(≥1024px): 풀 사이드바 고정 + TopBar
 // - 태블릿 (≥  600px): 미니 레일(아이콘만) + TopBar
 // - 모바일 (<  600px): TopBar + 하단 NavigationBar (홈/티켓/리포트/설정)
-// 모든 Scaffold에 HelpFlowColors.background(#FFFFFF) 배경색 적용
+// 모든 Scaffold 는 backgroundColor 미지정 → 테마 scaffoldBackgroundColor 자동 적용
