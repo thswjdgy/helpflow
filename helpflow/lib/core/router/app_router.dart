@@ -25,22 +25,29 @@ final routerProvider = Provider<GoRouter>((ref) {
     debugLogDiagnostics: false,
 
     /// 인증 상태 기반 리다이렉트 함수
-    /// 매 네비게이션마다 호출되어 로그인 여부에 따라 경로 결정
+    /// 매 네비게이션마다 호출되어 로그인 여부에 따라 경로를 강제 결정한다.
+    /// - 로딩 중에도 /login 이외의 경로는 /login 으로 강제 이동 (대시보드 flash 방지)
+    /// - 뒤로가기 우회 불가: redirect 는 router.go() 와 동일하게 히스토리를 교체하므로
+    ///   /dashboard 에서 뒤로가기를 눌러도 /login 으로 돌아갈 수 없다.
     redirect: (BuildContext context, GoRouterState state) {
       final authState = ref.read(authProvider);
-
-      // 인증 상태 로딩 중이면 현재 화면 유지 (리다이렉트 보류)
-      if (authState.isLoading) return null;
-
-      final isLoggedIn = authState.valueOrNull != null;
       final isOnLogin = state.uri.path == '/login';
 
-      // 로그인 안 됨 + 로그인 화면이 아니면 → 로그인 화면으로
+      // ① 인증 확인 중: /login 이 아닌 모든 경로를 /login 으로 강제 이동
+      //    (web URL 직접 입력 시 대시보드가 찰나 표시되는 flash 를 차단)
+      if (authState.isLoading) {
+        return isOnLogin ? null : '/login';
+      }
+
+      final isLoggedIn = authState.valueOrNull != null;
+
+      // ② 비로그인 상태 + /login 이 아닌 경로 → /login 으로 강제 이동
       if (!isLoggedIn && !isOnLogin) return '/login';
-      // 이미 로그인 + 로그인 화면이면 → 대시보드로
+
+      // ③ 로그인 완료 + /login 화면 → /dashboard 로 자동 이동
       if (isLoggedIn && isOnLogin) return '/dashboard';
 
-      return null; // 리다이렉트 없음
+      return null; // 리다이렉트 필요 없음
     },
 
     routes: [
@@ -131,7 +138,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 // ============================================================
 // [파일 요약]
 // 파일명: app_router.dart
-// 역할: go_router 기반 라우팅 설정 + Riverpod 인증 상태 연동 리다이렉트
+// 역할: go_router 기반 라우팅 설정 + Riverpod 인증 상태 연동 리다이렉트 (로그인 필수)
 // 주요 클래스/함수: routerProvider
 // 연관 파일: router_notifier.dart, auth_provider.dart, login_screen.dart, main_layout.dart
 // ============================================================
