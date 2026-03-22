@@ -1,4 +1,64 @@
 ---
+## 📅 2026-03-22
+
+### ✅ 완료한 작업
+
+**[작업 1] TicketModel Firestore 연동 설계**
+- `lib/shared/models/ticket_model.dart` 신규 생성
+- 필드: id, title, description, status, priority, category, reporterId, agentId?, imageUrls, createdAt, updatedAt
+- `fromFirestore()`: Firestore DocumentSnapshot → TicketModel 변환
+- `toMap()`: TicketModel → Firestore 저장용 Map 변환 (Timestamp 직렬화 포함)
+- `copyWith()`: 불변 객체 부분 복사 패턴
+
+**[작업 2] TicketService CRUD 구현**
+- `lib/shared/services/ticket_service.dart` 신규 생성
+- `createTicket()`: Firestore set으로 티켓 저장
+- `getTickets()`: snapshots() Stream 실시간 반환 (createdAt 내림차순)
+- `getTicketById()`: 단일 문서 조회, 없으면 null 반환
+- `updateTicket()`: Firestore update로 수정
+- `deleteTicket()`: Firestore delete로 삭제
+- `_toKoreanError()`: FirebaseException 코드 → 한글 메시지 변환
+
+**[작업 3] TicketProvider Riverpod 상태 관리**
+- `lib/features/tickets/ticket_provider.dart` 신규 생성
+- `AsyncNotifier<List<TicketModel>>` 패턴으로 티켓 목록 상태 관리
+- `build()`: getTickets() Stream 첫 값으로 초기 목록 로드
+- `createTicket() / updateTicket() / deleteTicket()`: CRUD 후 목록 자동 갱신
+- `AsyncValue.guard()`로 에러 상태 자동 처리
+- `ticketProvider` 전역 노출
+
+**[작업 4] Firestore 보안 규칙 설계**
+- 로그인 사용자만 읽기/쓰기 가능
+- create 시 reporterId == 본인 uid 검증
+- update: admin 또는 본인 접수 티켓만 가능
+- delete: admin 전용
+- users/{uid}.role == 'admin'으로 관리자 판별
+
+**[작업 5] Firebase 패키지 추가**
+- `pubspec.yaml`: firebase_core ^3.6.0, cloud_firestore ^5.4.1 추가
+- `flutter pub get` 후 플랫폼별 플러그인 등록 파일 자동 갱신
+
+### 🐛 발생한 오류 & 해결 방법
+- `ticket_service.dart` 경고: `doc as DocumentSnapshot<Map<String, dynamic>>` 불필요한 캐스트
+  - 해결: `.map(TicketModel.fromFirestore)` 메서드 레퍼런스로 수정
+
+### ⚠️ 미완료 / 다음에 할 것
+- Firebase Console에서 Firestore 보안 규칙 직접 게시 필요
+- `flutterfire configure` 실행 → `firebase_options.dart` 생성 후 `main.dart`에 `Firebase.initializeApp()` 추가
+- `auth_provider.dart` TODO: FirebaseAuth.instance 실제 연동 교체
+
+### 📦 커밋 내역
+- `feat: TicketModel Firestore 연동 설계` (week-02, 0642f78)
+- `feat: TicketService CRUD 구현` (week-02, 8698da1)
+- `feat: Riverpod TicketProvider 상태 관리 구현` (week-02, f380f36)
+
+### 🔗 연관 파일 목록
+- `lib/shared/models/ticket_model.dart` (신규)
+- `lib/shared/services/ticket_service.dart` (신규)
+- `lib/features/tickets/ticket_provider.dart` (신규)
+- `pubspec.yaml` (수정 — Firebase 패키지 추가)
+
+---
 ## 📅 2026-03-19 (2차 작업)
 
 ### ✅ 완료한 작업
