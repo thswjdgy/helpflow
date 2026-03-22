@@ -16,6 +16,10 @@ dependencies:
   # 상태 관리
   flutter_riverpod: ^2.5.1
 
+  # Firebase
+  firebase_core: ^3.6.0
+  cloud_firestore: ^5.4.1
+
   # 로컬 DB
   hive_flutter: ^1.1.0
 
