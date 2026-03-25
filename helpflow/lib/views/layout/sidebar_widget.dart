@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/constants/app_colors.dart';
+import '../../features/auth/auth_provider.dart';
 
 /// 사이드바 네비게이션 항목 데이터 모델
 class _NavItem {
@@ -22,7 +24,8 @@ class _NavItem {
 /// 앱 좌측 사이드바 네비게이션 위젯
 /// isCollapsed=false → 아이콘 + 레이블 (데스크탑, 너비 240)
 /// isCollapsed=true  → 아이콘만 표시 (태블릿 미니 레일, 너비 64)
-class SidebarWidget extends StatelessWidget {
+/// ConsumerWidget으로 authProvider를 구독하여 로그아웃 기능 제공
+class SidebarWidget extends ConsumerWidget {
   /// 현재 활성화된 경로 (탑-레벨 경로 기준으로 비교)
   final String currentLocation;
 
@@ -70,7 +73,7 @@ class SidebarWidget extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -117,6 +120,14 @@ class SidebarWidget extends StatelessWidget {
                 );
               }).toList(),
             ),
+          ),
+
+          // ── 하단 로그아웃 섹션 ────────────────────────────
+          const Divider(height: 1),
+          _LogoutTile(
+            isCollapsed: isCollapsed,
+            // authProvider.signOut() 호출 → 라우터가 /login으로 자동 리다이렉트
+            onTap: () => ref.read(authProvider.notifier).signOut(),
           ),
         ],
       ),
@@ -239,8 +250,66 @@ class _NavItemTile extends StatelessWidget {
   }
 }
 
+// ── 로그아웃 타일 ────────────────────────────────────────────
+/// 사이드바 하단 고정 로그아웃 버튼
+/// isCollapsed 상태에 따라 아이콘만 / 아이콘+텍스트로 전환
+class _LogoutTile extends StatelessWidget {
+  /// 접힌 상태 여부 (태블릿 미니 레일)
+  final bool isCollapsed;
+
+  /// 로그아웃 실행 콜백
+  final VoidCallback onTap;
+
+  const _LogoutTile({required this.isCollapsed, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isCollapsed ? 0 : 12,
+            vertical: 12,
+          ),
+          child: isCollapsed
+              // 접힌 상태: 아이콘만 중앙 정렬 + 툴팁
+              ? Center(
+                  child: Tooltip(
+                    message: '로그아웃',
+                    child: const Icon(
+                      Icons.logout,
+                      color: AppColors.error,
+                      size: AppSizes.iconNavSize,
+                    ),
+                  ),
+                )
+              // 펼친 상태: 아이콘 + 텍스트
+              : const Row(
+                  children: [
+                    Icon(Icons.logout, color: AppColors.error, size: AppSizes.iconNavSize),
+                    SizedBox(width: 12),
+                    Text(
+                      '로그아웃',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.error,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
 // [파일 요약]
 // 앱 좌측 사이드바 네비게이션 위젯입니다.
 // isCollapsed에 따라 아이콘+레이블(데스크탑) ↔ 아이콘만(태블릿) 전환을 AnimatedContainer로 처리합니다.
 // 현재 경로(currentLocation)를 기반으로 활성 항목을 강조 표시합니다.
 // Drawer 내부에서도 사용 가능하도록 onClose 콜백을 지원합니다.
+// 하단에 로그아웃 버튼(_LogoutTile)을 추가하여 authProvider.signOut() 호출 후 /login으로 이동합니다.
