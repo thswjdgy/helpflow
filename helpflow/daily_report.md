@@ -1,4 +1,83 @@
 ---
+## 📅 2026-03-25
+
+### ✅ 완료한 작업
+
+**[작업 1] HelpFlow 디자인 시스템 정의 (`lib/core/design_system.dart` 신규)**
+- `HelpFlowColors`: 토스 스타일 색상 팔레트 (primary #0057FF, background #FFFFFF, surface, gray100/400/700, error #FF4D4F)
+- `HelpFlowTextStyles`: 시스템 폰트 기반 텍스트 스타일 7종 (headline1~3, body1~2, caption, button)
+- `HelpFlowButtonStyles`: FilledButton / OutlinedButton / TextButton 스타일 (radius 12, padding 24×16)
+- `HelpFlowSpacing`: 4 / 8 / 12 / 16 / 20 / 24 / 32px 여백 상수 체계
+
+**[작업 2] app_theme.dart 디자인 시스템 연동**
+- seedColor → `HelpFlowColors.primary` 참조로 변경
+- `TextTheme` 전체를 `HelpFlowTextStyles` 7종 매핑
+- FilledButton / OutlinedButton / TextButton 테마를 `HelpFlowButtonStyles`로 교체 (radius 8 → 12)
+- `NavigationBar` 테마 신규 추가 (모바일 하단 바용)
+- 라이트 `scaffoldBackgroundColor` → `HelpFlowColors.background` (#FFFFFF)
+
+**[작업 3] 모바일 하단 내비게이션 바 추가 (`main_layout.dart`)**
+- 기존 모바일 Drawer → `NavigationBar` (Material 3) 4탭으로 교체
+- 항목: 홈(대시보드) / 티켓 / 리포트 / 설정
+- 600px 미만에서만 하단 바 표시, 600px 이상은 기존 사이드바 유지
+- `/reports` 라우트 및 `ReportsScreen` 플레이스홀더 신규 추가
+- 모든 레이아웃 Scaffold에 `backgroundColor: HelpFlowColors.background` 적용
+
+**[작업 4] 전체 화면 배경색 통일**
+- ticket_list / ticket_detail / ticket_form / settings 4개 화면 Scaffold에 `backgroundColor: HelpFlowColors.background` 적용
+
+**[작업 5] 사이드바 로그아웃 버튼 UI 추가 (`sidebar_widget.dart`)**
+- `StatelessWidget` → `ConsumerWidget` 변경 (`authProvider` 구독)
+- 사이드바 하단에 `_LogoutTile` 추가 (접힌 상태: 아이콘+툴팁 / 펼친 상태: 아이콘+텍스트)
+- 탭 시 `authProvider.notifier.signOut()` 호출 → 라우터가 `/login`으로 자동 리다이렉트
+
+**[작업 6] 티켓 목록 화면 구현 (`ticket_list_screen.dart`)**
+- `ticket_mock_data.dart` 신규: `MockTicket` 클래스 + 12건 목업 데이터 (다양한 상태·우선순위·카테고리)
+- 상태 필터 칩 5종 (전체 / 새 티켓 / 처리중 / 완료 / 종료), 가로 스크롤
+- 우선순위 필터 칩 5종 (전체 / 긴급 / 높음 / 중간 / 낮음), 가로 스크롤
+- 정렬 드롭다운 3종 (최신순 / 오래된순 / 우선순위순)
+- `_TicketCard` 탭 시 `/tickets/:id` 이동
+- `StatefulWidget` 로컬 상태로 필터·정렬 관리
+
+**[작업 7] 티켓 상세 화면 구현 (`ticket_detail_screen.dart`)**
+- `_TicketInfoSection`: 제목·설명·카테고리·접수자·접수일 카드
+- `_StatusSection`: 현재 상태 배지 + 다음 상태 변경 버튼 (new → 처리중 → 완료)
+- `_NoteSection`: 처리 내용 텍스트 입력(4줄) + 저장 버튼
+- 상태 변경 및 메모 저장 시 SnackBar 피드백 제공
+- 로컬 상태 관리 (Firestore 연동 전 임시)
+
+### 🐛 발생한 오류 & 해결 방법
+- `design_system.dart` — `HelpFlowButtonStyles.filled` 는 `BorderRadius.circular()` 때문에 `const` 불가 → `static ButtonStyle get filled =>` getter 방식으로 해결
+- `ticket_mock_data.dart` — 파일 최상단 `///` 주석 → `dangling_library_doc_comments` lint 경고 → `//` 일반 주석으로 변경
+- `ticket_list_screen.dart` — `_TicketListScreenState`에 `_statusOptions`, `_priorityOptions` 중복 선언(이미 `_FilterSection`에 있음) → 제거
+- `ticket_list_screen.dart` — `separatorBuilder: (_, __)` → Dart 3 스타일 `(_, _)` 로 교체
+
+### ⚠️ 미완료 / 다음에 할 것 (2차 세션)
+- 티켓 접수 폼 (`ticket_form_screen.dart`) — 제목·내용·카테고리·우선순위 입력 + 유효성 검증
+- 회원가입 화면 (`register_screen.dart`) — 역할(USER/AGENT/ADMIN) 선택 포함
+- Firebase Auth 실제 연동: `flutterfire configure` → `firebase_options.dart` → `auth_provider.dart` TODO 교체
+- `top_bar_widget.dart` — `/reports` 경로 페이지 제목 처리 (현재 기본값 "대시보드"로 폴백)
+
+### 📦 커밋 내역
+- `feat: 사이드바 로그아웃 버튼 UI 추가` (week-02, e27357e)
+- `feat: 티켓 목록 화면 구현 (목업 데이터, 필터, 정렬)` (week-02, f817986)
+- `feat: 티켓 상세 화면 구현 (목업 데이터, 상태 변경, 처리 메모)` (week-02, 42afa81)
+- *(디자인 시스템 관련 커밋 4건은 667d697에 포함)*
+
+### 🔗 연관 파일 목록
+- `lib/core/design_system.dart` (신규)
+- `lib/core/theme/app_theme.dart` (수정)
+- `lib/views/layout/main_layout.dart` (수정 — 모바일 NavigationBar)
+- `lib/views/layout/sidebar_widget.dart` (수정 — 로그아웃 버튼)
+- `lib/views/reports/reports_screen.dart` (신규)
+- `lib/core/router/app_router.dart` (수정 — /reports 추가)
+- `lib/views/tickets/ticket_mock_data.dart` (신규)
+- `lib/views/tickets/ticket_list_screen.dart` (전면 재작성)
+- `lib/views/tickets/ticket_detail_screen.dart` (전면 재작성)
+- `lib/views/tickets/ticket_form_screen.dart` (수정 — backgroundColor)
+- `lib/views/settings/settings_screen.dart` (수정 — backgroundColor)
+
+---
 ## 📅 2026-03-22
 
 ### ✅ 완료한 작업
