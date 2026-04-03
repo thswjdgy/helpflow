@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import 'auth_provider.dart';
@@ -137,6 +138,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           )
                         : const Text('로그인'),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── 회원가입 링크 ──────────────────────────────
+                  TextButton(
+                    onPressed: () => context.go('/register'),
+                    child: const Text('계정이 없으신가요? 회원가입'),
                   ),
                 ],
               ),

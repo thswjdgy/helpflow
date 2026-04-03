@@ -57,6 +57,12 @@ class SidebarWidget extends ConsumerWidget {
       route: '/tickets',
     ),
     _NavItem(
+      label: AppStrings.navReports,
+      icon: Icons.bar_chart_outlined,
+      selectedIcon: Icons.bar_chart,
+      route: '/reports',
+    ),
+    _NavItem(
       label: AppStrings.navSettings,
       icon: Icons.settings_outlined,
       selectedIcon: Icons.settings,

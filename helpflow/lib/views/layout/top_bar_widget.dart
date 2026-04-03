@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/constants/app_strings.dart';
+import '../../features/auth/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 
 /// 앱 상단 탑바 위젯
@@ -36,6 +37,8 @@ class TopBarWidget extends ConsumerWidget implements PreferredSizeWidget {
       return AppStrings.ticketDetailTitle;
     } else if (currentLocation.startsWith('/tickets')) {
       return AppStrings.ticketListTitle;
+    } else if (currentLocation.startsWith('/reports')) {
+      return AppStrings.reportsTitle;
     } else if (currentLocation.startsWith('/settings')) {
       return AppStrings.settingsTitle;
     } else {
@@ -50,8 +53,13 @@ class TopBarWidget extends ConsumerWidget implements PreferredSizeWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    // 티켓 작성/상세 화면에서는 새 티켓 버튼 숨김
-    final showNewTicketButton = !currentLocation.startsWith('/tickets/');
+    // 현재 로그인 사용자 역할 확인
+    final userRole = ref.watch(authProvider).valueOrNull?.role ?? 'user';
+
+    // 새 티켓 버튼: USER 역할이고 티켓 작성/상세 화면이 아닐 때만 표시
+    // AGENT·ADMIN은 직접 티켓을 접수하지 않으므로 숨김
+    final showNewTicketButton =
+        userRole == 'user' && !currentLocation.startsWith('/tickets/');
 
     return AppBar(
       // backgroundColor 미지정 → app_theme.dart AppBarTheme 값 자동 적용

@@ -10,6 +10,7 @@ class AppStrings {
   // ── 네비게이션 레이블 ──────────────────────────────────────────
   static const String navDashboard = '대시보드';
   static const String navTickets = '티켓 관리';
+  static const String navReports = '리포트';
   static const String navSettings = '설정';
 
   // ── 대시보드 ──────────────────────────────────────────────────
@@ -27,6 +28,9 @@ class AppStrings {
   static const String ticketFormTitleNew = '새 티켓 작성';
   static const String ticketFormTitleEdit = '티켓 수정';
   static const String newTicket = '새 티켓';
+
+  // ── 리포트 ────────────────────────────────────────────────────
+  static const String reportsTitle = '리포트';
 
   // ── 설정 ──────────────────────────────────────────────────────
   static const String settingsTitle = '설정';

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/design_system.dart';
+import '../../features/auth/auth_provider.dart';
 import 'ticket_mock_data.dart';
 
 // ── 파일 레벨 헬퍼 함수 ──────────────────────────────────────
@@ -45,19 +47,20 @@ String _categoryLabel(String category) {
 // ── 티켓 상세 화면 ────────────────────────────────────────────
 /// 티켓 상세 화면
 /// ticketId로 kMockTickets에서 해당 티켓을 찾아 표시합니다.
-/// 상태 변경(new→in_progress→resolved)과 처리 메모 입력을 로컬 상태로 관리합니다.
-class TicketDetailScreen extends StatefulWidget {
+/// USER 역할: 상태 변경·메모 입력 비활성(읽기 전용)
+/// AGENT·ADMIN: 상태 변경 + 처리 메모 모두 활성
+class TicketDetailScreen extends ConsumerStatefulWidget {
   /// go_router :id 경로 파라미터로 전달받은 티켓 ID
   final String ticketId;
 
   const TicketDetailScreen({super.key, required this.ticketId});
 
   @override
-  State<TicketDetailScreen> createState() => _TicketDetailScreenState();
+  ConsumerState<TicketDetailScreen> createState() => _TicketDetailScreenState();
 }
 
 /// 티켓 상세 화면 상태 클래스
-class _TicketDetailScreenState extends State<TicketDetailScreen> {
+class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
   MockTicket? _ticket; // 조회된 목업 티켓 (없으면 null)
   String _currentStatus = ''; // 화면 내 로컬 상태 (변경 즉시 반영)
   final TextEditingController _noteCtrl = TextEditingController();
@@ -133,6 +136,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       );
     }
 
+    // USER 역할은 읽기 전용 (상태 변경·메모 입력 비활성)
+    final userRole = ref.watch(authProvider).valueOrNull?.role ?? 'user';
+    final isReadOnly = userRole == 'user';
+
     return Scaffold(
       backgroundColor: HelpFlowColors.background,
       body: SingleChildScrollView(
@@ -145,20 +152,22 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
             const SizedBox(height: HelpFlowSpacing.xxl),
 
-            // 상태 변경 섹션
+            // 상태 변경 섹션 (USER는 읽기 전용)
             _StatusSection(
               currentStatus: _currentStatus,
-              nextStatus: _nextStatus(),
+              nextStatus: isReadOnly ? null : _nextStatus(),
               onStatusChange: _onStatusChange,
+              isReadOnly: isReadOnly,
             ),
 
             const SizedBox(height: HelpFlowSpacing.xxl),
 
-            // 처리 메모 입력 섹션
-            _NoteSection(
-              controller: _noteCtrl,
-              onSubmit: _onNoteSubmit,
-            ),
+            // 처리 메모 입력 섹션 (USER는 숨김)
+            if (!isReadOnly)
+              _NoteSection(
+                controller: _noteCtrl,
+                onSubmit: _onNoteSubmit,
+              ),
           ],
         ),
       ),

@@ -12,12 +12,19 @@ class AuthUser {
   /// 사용자 이메일
   final String email;
 
-  const AuthUser({required this.uid, required this.email});
+  /// 사용자 역할: 'user' | 'agent' | 'admin'
+  final String role;
+
+  const AuthUser({
+    required this.uid,
+    required this.email,
+    this.role = 'user',
+  });
 }
 
 /// 인증 상태를 관리하는 AsyncNotifier
 /// - 앱 시작 시 Hive에서 저장된 인증 정보를 복원
-/// - signIn / signOut 으로 상태 전환
+/// - signIn / signOut / register 으로 상태 전환
 /// - Firebase Auth 연동 시 build / signIn / signOut 내부만 교체하면 됨
 class AuthNotifier extends AsyncNotifier<AuthUser?> {
   /// Hive 박스 이름 상수
@@ -28,13 +35,14 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
   Future<AuthUser?> build() async {
     final box = await Hive.openBox(_boxName);
 
-    // 저장된 uid, email 읽기
+    // 저장된 uid, email, role 읽기
     final uid = box.get('uid') as String?;
     final email = box.get('email') as String?;
+    final role = box.get('role') as String? ?? 'user';
 
     // 둘 다 있을 때만 로그인 상태로 간주
     if (uid != null && email != null) {
-      return AuthUser(uid: uid, email: email);
+      return AuthUser(uid: uid, email: email, role: role);
     }
     return null; // 비로그인 상태
   }
@@ -51,11 +59,19 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
       await Future.delayed(const Duration(milliseconds: 600));
 
       final box = await Hive.openBox(_boxName);
-      final user = AuthUser(uid: 'uid-${email.hashCode}', email: email);
+
+      // 이미 등록된 사용자라면 저장된 role 복원, 없으면 기본값 'user'
+      final savedRole = box.get('role') as String? ?? 'user';
+      final user = AuthUser(
+        uid: 'uid-${email.hashCode}',
+        email: email,
+        role: savedRole,
+      );
 
       // Hive에 인증 정보 영속화
       await box.put('uid', user.uid);
       await box.put('email', user.email);
+      await box.put('role', user.role);
 
       state = AsyncData(user); // 로그인 성공
     } catch (e, st) {
@@ -63,11 +79,41 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
     }
   }
 
+  /// 회원가입: 이메일·비밀번호·역할을 받아 Hive에 저장 후 자동 로그인
+  /// TODO: Firebase 연동 시 → FirebaseAuth.instance.createUserWithEmailAndPassword() 로 교체
+  Future<void> register({
+    required String email,
+    required String password,
+    required String role,
+  }) async {
+    state = const AsyncLoading();
+    try {
+      // 네트워크 지연 시뮬레이션
+      await Future.delayed(const Duration(milliseconds: 600));
+
+      final box = await Hive.openBox(_boxName);
+      final user = AuthUser(
+        uid: 'uid-${email.hashCode}',
+        email: email,
+        role: role,
+      );
+
+      // Hive에 인증 정보 영속화
+      await box.put('uid', user.uid);
+      await box.put('email', user.email);
+      await box.put('role', user.role);
+
+      state = AsyncData(user); // 회원가입 + 자동 로그인 성공
+    } catch (e, st) {
+      state = AsyncError(e, st); // 실패
+    }
+  }
+
   /// 로그아웃: Hive 인증 정보 삭제 후 비로그인 상태로 전환
   /// TODO: Firebase 연동 시 → FirebaseAuth.instance.signOut() 추가
   Future<void> signOut() async {
     final box = await Hive.openBox(_boxName);
-    await box.deleteAll(['uid', 'email']); // 저장된 인증 정보 삭제
+    await box.deleteAll(['uid', 'email', 'role']); // 저장된 인증 정보 삭제
     state = const AsyncData(null); // 비로그인 상태로 전환
   }
 }
@@ -80,7 +126,7 @@ final authProvider = AsyncNotifierProvider<AuthNotifier, AuthUser?>(
 // ============================================================
 // [파일 요약]
 // 파일명: auth_provider.dart
-// 역할: Riverpod 기반 인증 상태 관리 (로그인/로그아웃, Hive 영속화)
-// 주요 클래스/함수: AuthUser, AuthNotifier, authProvider
-// 연관 파일: router_notifier.dart, login_screen.dart, app_router.dart
+// 역할: Riverpod 기반 인증 상태 관리 (로그인/로그아웃/회원가입, Hive 영속화)
+// 주요 클래스/함수: AuthUser(uid·email·role), AuthNotifier, authProvider
+// 연관 파일: router_notifier.dart, login_screen.dart, register_screen.dart, app_router.dart
 // ============================================================

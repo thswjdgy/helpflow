@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/constants/app_strings.dart';
+import '../tickets/ticket_mock_data.dart';
 
 /// 대시보드 화면
-/// - 통계 카드 4개 (Wrap으로 반응형 배치)
+/// - kMockTickets 집계 통계 카드 4개 (Wrap으로 반응형 배치)
 /// - 차트 플레이스홀더 (7~8주차 fl_chart 연동 예정)
-/// - 최근 티켓 임시 목록
+/// - kMockTickets 최근 4건 티켓 목록
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
@@ -18,62 +20,71 @@ class DashboardScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── 통계 카드 영역 ────────────────────────────────────
-          _StatCardsSection(),
+          const _StatCardsSection(),
 
           const SizedBox(height: AppSizes.spacingLg),
 
           // ── 차트 플레이스홀더 ─────────────────────────────────
-          _ChartPlaceholder(),
+          const _ChartPlaceholder(),
 
           const SizedBox(height: AppSizes.spacingLg),
 
           // ── 최근 티켓 목록 ────────────────────────────────────
-          _RecentTicketsSection(),
+          const _RecentTicketsSection(),
         ],
       ),
     );
   }
 }
 
-// ── 통계 카드 섹션 ───────────────────────────────────────────────
-/// 4개의 통계 카드를 Wrap으로 반응형 배치
+// ── 통계 카드 섹션 ────────────────────────────────────────────
+/// kMockTickets를 집계하여 4개의 통계 카드를 Wrap으로 반응형 배치
 class _StatCardsSection extends StatelessWidget {
-  // 임시 통계 데이터 (추후 Provider로 교체)
-  static const List<_StatCardData> _stats = [
-    _StatCardData(
-      title: AppStrings.statsTotal,
-      value: '128',
-      unit: '건',
-      icon: Icons.confirmation_number_outlined,
-      color: AppColors.primary,
-    ),
-    _StatCardData(
-      title: AppStrings.statsInProgress,
-      value: '42',
-      unit: '건',
-      icon: Icons.pending_outlined,
-      color: AppColors.warning,
-    ),
-    _StatCardData(
-      title: AppStrings.statsDone,
-      value: '76',
-      unit: '건',
-      icon: Icons.check_circle_outline,
-      color: AppColors.success,
-    ),
-    _StatCardData(
-      title: AppStrings.statsPending,
-      value: '10',
-      unit: '건',
-      icon: Icons.warning_amber_outlined,
-      color: AppColors.error,
-    ),
-  ];
-
   const _StatCardsSection();
+
+  // kMockTickets 실시간 집계값
+  static int get _total => kMockTickets.length;
+  static int get _inProgress =>
+      kMockTickets.where((t) => t.status == 'in_progress').length;
+  static int get _done =>
+      kMockTickets.where((t) => t.status == 'resolved').length;
+  static int get _pending =>
+      kMockTickets.where((t) => t.status == 'new').length;
 
   @override
   Widget build(BuildContext context) {
+    // 집계 완료 후 카드 데이터 구성
+    final stats = [
+      _StatCardData(
+        title: AppStrings.statsTotal,
+        value: '$_total',
+        unit: '건',
+        icon: Icons.confirmation_number_outlined,
+        color: AppColors.primary,
+      ),
+      _StatCardData(
+        title: AppStrings.statsInProgress,
+        value: '$_inProgress',
+        unit: '건',
+        icon: Icons.pending_outlined,
+        color: AppColors.warning,
+      ),
+      _StatCardData(
+        title: AppStrings.statsDone,
+        value: '$_done',
+        unit: '건',
+        icon: Icons.check_circle_outline,
+        color: AppColors.success,
+      ),
+      _StatCardData(
+        title: AppStrings.statsPending,
+        value: '$_pending',
+        unit: '건',
+        icon: Icons.warning_amber_outlined,
+        color: AppColors.error,
+      ),
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -88,7 +99,7 @@ class _StatCardsSection extends StatelessWidget {
         Wrap(
           spacing: AppSizes.spacingMd,
           runSpacing: AppSizes.spacingMd,
-          children: _stats.map((data) => _StatCard(data: data)).toList(),
+          children: stats.map((data) => _StatCard(data: data)).toList(),
         ),
       ],
     );
@@ -192,7 +203,7 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-// ── 차트 플레이스홀더 ──────────────────────────────────────────
+// ── 차트 플레이스홀더 ─────────────────────────────────────────
 /// 7~8주차 fl_chart 연동 전까지 표시하는 플레이스홀더
 class _ChartPlaceholder extends StatelessWidget {
   const _ChartPlaceholder();
@@ -219,7 +230,6 @@ class _ChartPlaceholder extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppSizes.radiusMd),
             border: Border.all(
               color: colorScheme.outlineVariant,
-              style: BorderStyle.solid,
             ),
           ),
           child: Column(
@@ -247,21 +257,22 @@ class _ChartPlaceholder extends StatelessWidget {
   }
 }
 
-// ── 최근 티켓 목록 ─────────────────────────────────────────────
-/// 임시 최근 티켓 데이터로 구성된 목록
+// ── 최근 티켓 목록 ────────────────────────────────────────────
+/// kMockTickets를 최신순으로 정렬하여 상위 4건을 표시하는 섹션
 class _RecentTicketsSection extends StatelessWidget {
-  // 임시 티켓 데이터 (추후 Hive에서 로드)
-  static const List<_MockTicket> _mockTickets = [
-    _MockTicket(id: 'HF-001', title: '로그인 오류 발생', status: '처리중', priority: '높음', time: '10분 전'),
-    _MockTicket(id: 'HF-002', title: '비밀번호 재설정 요청', status: '새 티켓', priority: '중간', time: '1시간 전'),
-    _MockTicket(id: 'HF-003', title: '이메일 발송 지연 문제', status: '완료', priority: '낮음', time: '어제'),
-    _MockTicket(id: 'HF-004', title: '결제 오류 긴급 처리', status: '처리중', priority: '긴급', time: '2일 전'),
-  ];
-
   const _RecentTicketsSection();
+
+  /// kMockTickets에서 최신 4건 추출
+  static List<MockTicket> get _recentTickets {
+    final sorted = List<MockTicket>.from(kMockTickets)
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return sorted.take(4).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final tickets = _recentTickets;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -274,8 +285,9 @@ class _RecentTicketsSection extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
             ),
+            // 티켓 목록 화면으로 이동
             TextButton(
-              onPressed: () {},
+              onPressed: () => context.go('/tickets'),
               child: const Text('전체 보기'),
             ),
           ],
@@ -283,7 +295,7 @@ class _RecentTicketsSection extends StatelessWidget {
         const SizedBox(height: AppSizes.spacingSm),
         Card(
           child: Column(
-            children: _mockTickets
+            children: tickets
                 .map((ticket) => _TicketListItem(ticket: ticket))
                 .toList(),
           ),
@@ -293,55 +305,59 @@ class _RecentTicketsSection extends StatelessWidget {
   }
 }
 
-/// 임시 티켓 데이터 모델
-class _MockTicket {
-  final String id;
-  final String title;
-  final String status;
-  final String priority;
-  final String time;
-
-  const _MockTicket({
-    required this.id,
-    required this.title,
-    required this.status,
-    required this.priority,
-    required this.time,
-  });
-}
-
-/// 최근 티켓 목록 아이템 위젯
+/// 최근 티켓 목록 아이템 위젯 (MockTicket 사용)
 class _TicketListItem extends StatelessWidget {
-  final _MockTicket ticket;
+  final MockTicket ticket;
 
   const _TicketListItem({required this.ticket});
 
-  /// 상태에 따른 색상 반환
-  Color _statusColor() {
-    switch (ticket.status) {
-      case '처리중':
-        return AppColors.warning;
-      case '완료':
-        return AppColors.success;
-      case '새 티켓':
+  // 상태 값(영문) → 한국어 레이블
+  static String _statusLabel(String s) {
+    const m = {'new': '새 티켓', 'in_progress': '처리중', 'resolved': '완료', 'closed': '종료'};
+    return m[s] ?? s;
+  }
+
+  // 우선순위 값(영문) → 한국어 레이블
+  static String _priorityLabel(String p) {
+    const m = {'critical': '긴급', 'high': '높음', 'medium': '중간', 'low': '낮음'};
+    return m[p] ?? p;
+  }
+
+  // 상태 → 색상
+  static Color _statusColor(String s) {
+    switch (s) {
+      case 'new':
         return AppColors.statusNew;
+      case 'in_progress':
+        return AppColors.warning;
+      case 'resolved':
+        return AppColors.success;
       default:
-        return AppColors.info;
+        return AppColors.statusOnHold;
     }
   }
 
-  /// 우선순위에 따른 색상 반환
-  Color _priorityColor() {
-    switch (ticket.priority) {
-      case '긴급':
+  // 우선순위 → 색상
+  static Color _priorityColor(String p) {
+    switch (p) {
+      case 'critical':
         return AppColors.error;
-      case '높음':
+      case 'high':
         return AppColors.warning;
-      case '낮음':
-        return AppColors.success;
-      default:
+      case 'medium':
         return AppColors.info;
+      default:
+        return AppColors.success;
     }
+  }
+
+  // 접수 시각 → 상대 시간 문자열
+  static String _timeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}분 전';
+    if (diff.inHours < 24) return '${diff.inHours}시간 전';
+    if (diff.inDays < 7) return '${diff.inDays}일 전';
+    return '${dt.month}/${dt.day}';
   }
 
   @override
@@ -364,24 +380,30 @@ class _TicketListItem extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        ticket.time,
+        _timeAgo(ticket.createdAt),
         style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 우선순위 뱃지
-          _Badge(label: ticket.priority, color: _priorityColor()),
+          // 우선순위 배지
+          _Badge(
+            label: _priorityLabel(ticket.priority),
+            color: _priorityColor(ticket.priority),
+          ),
           const SizedBox(width: 6),
-          // 상태 뱃지
-          _Badge(label: ticket.status, color: _statusColor()),
+          // 상태 배지
+          _Badge(
+            label: _statusLabel(ticket.status),
+            color: _statusColor(ticket.status),
+          ),
         ],
       ),
     );
   }
 }
 
-/// 상태/우선순위 뱃지 위젯
+/// 상태/우선순위 배지 위젯
 class _Badge extends StatelessWidget {
   final String label;
   final Color color;
@@ -410,7 +432,8 @@ class _Badge extends StatelessWidget {
 }
 
 // [파일 요약]
-// 대시보드 화면 구현입니다.
-// 4개의 통계 카드(총/처리중/완료/미처리)를 Wrap으로 반응형 배치하고,
-// fl_chart 연동 전 차트 플레이스홀더와 임시 최근 티켓 목록을 표시합니다.
-// 모든 데이터는 2주차 Hive 연동 후 실제 데이터로 교체될 예정입니다.
+// 대시보드 화면입니다.
+// _StatCardsSection: kMockTickets 집계값(총/처리중/완료/미처리)으로 통계 카드 표시
+// _ChartPlaceholder: 7~8주차 fl_chart 연동 전 플레이스홀더
+// _RecentTicketsSection: kMockTickets 최신 4건 표시, "전체 보기" → /tickets 이동
+// Firestore 연동 시 kMockTickets → ticketProvider로 교체합니다.

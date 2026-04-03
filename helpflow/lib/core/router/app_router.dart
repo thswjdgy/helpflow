@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/auth_provider.dart';
 import '../../features/auth/login_screen.dart';
+import '../../features/auth/register_screen.dart';
 import '../../views/dashboard/dashboard_screen.dart';
 import '../../views/layout/main_layout.dart';
 import '../../views/reports/reports_screen.dart';
@@ -31,21 +32,24 @@ final routerProvider = Provider<GoRouter>((ref) {
     ///   /dashboard 에서 뒤로가기를 눌러도 /login 으로 돌아갈 수 없다.
     redirect: (BuildContext context, GoRouterState state) {
       final authState = ref.read(authProvider);
-      final isOnLogin = state.uri.path == '/login';
+      final path = state.uri.path;
 
-      // ① 인증 확인 중: /login 이 아닌 모든 경로를 /login 으로 강제 이동
+      // 인증 없이 접근 가능한 공개 경로
+      final isPublicPath = path == '/login' || path == '/register';
+
+      // ① 인증 확인 중: 공개 경로가 아니면 /login 으로 강제 이동
       //    (web URL 직접 입력 시 대시보드가 찰나 표시되는 flash 를 차단)
       if (authState.isLoading) {
-        return isOnLogin ? null : '/login';
+        return isPublicPath ? null : '/login';
       }
 
       final isLoggedIn = authState.valueOrNull != null;
 
-      // ② 비로그인 상태 + /login 이 아닌 경로 → /login 으로 강제 이동
-      if (!isLoggedIn && !isOnLogin) return '/login';
+      // ② 비로그인 상태 + 보호 경로 → /login 으로 강제 이동
+      if (!isLoggedIn && !isPublicPath) return '/login';
 
-      // ③ 로그인 완료 + /login 화면 → /dashboard 로 자동 이동
-      if (isLoggedIn && isOnLogin) return '/dashboard';
+      // ③ 로그인 완료 + 공개 경로 → /dashboard 로 자동 이동
+      if (isLoggedIn && isPublicPath) return '/dashboard';
 
       return null; // 리다이렉트 필요 없음
     },
@@ -55,6 +59,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+
+      // ── 회원가입 화면 (ShellRoute 밖 — 사이드바/탑바 없음) ──
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
       ),
 
       // ── ShellRoute: MainLayout(사이드바+탑바)를 공유하는 쉘 ──

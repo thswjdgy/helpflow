@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/design_system.dart';
+import '../../features/auth/auth_provider.dart';
 import 'ticket_mock_data.dart';
 
 /// 티켓 목록 화면
-/// 목업 데이터를 표시하며 상태·우선순위 필터 칩과 정렬 기능을 제공합니다.
+/// 목업 데이터를 표시하며 상태·우선순위 필터 칩과 정렬·검색 기능을 제공합니다.
+/// USER 역할: 본인 이메일 티켓만 표시 / AGENT·ADMIN: 전체 표시
 /// Firestore 연동 시 kMockTickets → ticketProvider.when(...) 으로 교체합니다.
-class TicketListScreen extends StatefulWidget {
+class TicketListScreen extends ConsumerStatefulWidget {
   const TicketListScreen({super.key});
 
   @override
-  State<TicketListScreen> createState() => _TicketListScreenState();
+  ConsumerState<TicketListScreen> createState() => _TicketListScreenState();
 }
 
 // ── 정렬 옵션 ─────────────────────────────────────────────────
@@ -23,8 +26,8 @@ enum _SortOrder {
 }
 
 // ── 메인 상태 클래스 ──────────────────────────────────────────
-/// 필터 상태 관리 + 필터링·정렬 로직 + 빌드
-class _TicketListScreenState extends State<TicketListScreen> {
+/// 필터 상태 관리 + 필터링·정렬·검색 로직 + 빌드
+class _TicketListScreenState extends ConsumerState<TicketListScreen> {
   /// 선택된 상태 필터 레이블 ('전체' = 필터 없음)
   String _statusFilter = '전체';
 
@@ -33,6 +36,9 @@ class _TicketListScreenState extends State<TicketListScreen> {
 
   /// 현재 정렬 방식
   _SortOrder _sortOrder = _SortOrder.newest;
+
+  /// 검색어 (제목 또는 접수자 이메일 포함 여부로 필터)
+  String _searchQuery = '';
 
   // 상태 레이블 → 데이터 값 매핑
   static const Map<String, String> _statusMap = {
@@ -53,15 +59,26 @@ class _TicketListScreenState extends State<TicketListScreen> {
   // 우선순위 정렬 기준 순서 (critical > high > medium > low)
   static const List<String> _priorityOrder = ['critical', 'high', 'medium', 'low'];
 
-  /// 현재 필터·정렬 조건이 적용된 티켓 목록 반환
+  /// 현재 검색어·필터·정렬·역할 조건이 모두 적용된 티켓 목록 반환
   List<MockTicket> get _filteredTickets {
-    // 1단계: 필터 적용
-    var list = kMockTickets.where((t) {
+    final query = _searchQuery.trim().toLowerCase();
+    final user = ref.read(authProvider).valueOrNull;
+
+    // 0단계: USER 역할이면 본인 이메일 티켓만, AGENT/ADMIN은 전체
+    final base = (user?.role == 'user' && user?.email != null)
+        ? kMockTickets.where((t) => t.reporterEmail == user!.email).toList()
+        : List<MockTicket>.from(kMockTickets);
+
+    // 1단계: 검색어 + 상태 + 우선순위 필터 AND 조건 적용
+    var list = base.where((t) {
+      final searchOk = query.isEmpty ||
+          t.title.toLowerCase().contains(query) ||
+          t.reporterEmail.toLowerCase().contains(query);
       final statusOk =
           _statusFilter == '전체' || t.status == _statusMap[_statusFilter];
       final priorityOk =
           _priorityFilter == '전체' || t.priority == _priorityMap[_priorityFilter];
-      return statusOk && priorityOk;
+      return searchOk && statusOk && priorityOk;
     }).toList();
 
     // 2단계: 정렬 적용
@@ -86,6 +103,11 @@ class _TicketListScreenState extends State<TicketListScreen> {
       backgroundColor: HelpFlowColors.background,
       body: Column(
         children: [
+          // 검색창
+          _SearchBar(
+            onChanged: (v) => setState(() => _searchQuery = v),
+          ),
+
           // 필터·정렬 영역
           _FilterSection(
             statusFilter: _statusFilter,
@@ -121,6 +143,37 @@ class _TicketListScreenState extends State<TicketListScreen> {
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── 검색창 위젯 ──────────────────────────────────────────────
+/// 제목 또는 접수자 이메일로 티켓을 검색하는 입력창
+class _SearchBar extends StatelessWidget {
+  final ValueChanged<String> onChanged;
+
+  const _SearchBar({required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+      child: TextField(
+        onChanged: onChanged,
+        decoration: InputDecoration(
+          hintText: '제목 또는 이메일 검색...',
+          hintStyle: const TextStyle(
+              fontSize: 13, color: HelpFlowColors.gray400),
+          prefixIcon: const Icon(Icons.search, size: 20,
+              color: HelpFlowColors.gray400),
+          isDense: true,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: HelpFlowColors.gray100),
+          ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        ),
       ),
     );
   }
