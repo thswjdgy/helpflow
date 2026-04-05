@@ -1,4 +1,125 @@
 ---
+## 📅 2026-04-05
+
+### ✅ 완료한 작업
+
+**[5주차 — 티켓 접수 폼·회원가입·역할 기반 UI]**
+
+**[작업 1] 티켓 접수 폼 (`ticket_form_screen.dart` 전면 재작성)**
+- `ConsumerStatefulWidget` → authProvider에서 접수자 이메일 읽기
+- 4개 입력 필드: 제목(required), 내용(required + minLength 10), 카테고리·우선순위 드롭다운
+- `_FormBody`(StatelessWidget) 분리로 100줄 초과 방지, `_DropdownField` 공용 위젯
+- 제출 성공 시 SnackBar + `context.go('/tickets')`
+
+**[작업 2] 회원가입 화면 (`register_screen.dart` 신규)**
+- 이메일·비밀번호·비밀번호 확인·역할 선택(SegmentedButton: 사용자/에이전트/관리자)
+- `_validateConfirm()`: 비밀번호 일치 검증
+- 성공 시 자동 로그인(authProvider.register() 연동)
+
+**[작업 3] AuthUser에 역할 추가 (`auth_provider.dart` 수정)**
+- `AuthUser.role` 필드 추가 (기본값 'user')
+- `register()` 메서드 신규: 이메일·비밀번호·역할 Hive 영속화
+- `build()` / `signIn()`에서 role 복원 로직 추가
+
+**[작업 4] 로그인 화면에 회원가입 링크 (`login_screen.dart`)**
+- TextButton "계정이 없으신가요? 회원가입" → `context.go('/register')`
+
+**[작업 5] 라우터·스트링·사이드바·탑바 정비**
+- `app_router.dart`: `/register` 공개 경로 추가, redirect에 `isPublicPath` 개념 도입
+- `app_strings.dart`: `navReports`, `reportsTitle`, `navNotifications`, `navAssets` 추가
+- `sidebar_widget.dart`: 리포트 항목 추가
+- `top_bar_widget.dart`: /reports 타이틀 처리
+
+**[작업 6] 설정 화면 (`settings_screen.dart` 완전 구현)**
+- `_AppearanceSection`: 다크모드 SwitchListTile (themeProvider 연동)
+- `_AccountSection`: 이메일·역할 표시 + 로그아웃 OutlinedButton (AppColors.error)
+
+**[작업 7] 리포트 화면 (`reports_screen.dart` 완전 구현)**
+- kMockTickets 집계: 요약 카드 4개 (Wrap 반응형), 상태·카테고리·우선순위 LinearProgressIndicator 분포 바
+- fl_chart 연동(7~8주차) 시 DistRow 교체 예정
+
+**[작업 8] 대시보드 실데이터 연동 (`dashboard_screen.dart`)**
+- 하드코딩 수치 → kMockTickets 실집계값 (total/inProgress/done/pending)
+- `_RecentTicketsSection`: kMockTickets 최신 4건, 상대시간 표시, "전체 보기" → /tickets
+
+**[작업 9] 티켓 목록 검색 기능 (`ticket_list_screen.dart`)**
+- `ConsumerStatefulWidget` 전환, `_searchQuery` 상태 추가
+- `_SearchBar` 위젯: 제목·이메일 포함 여부 AND 검색
+- USER 역할: 본인 이메일 티켓만 표시 (AGENT·ADMIN: 전체)
+
+**[작업 10] 역할 기반 UI 분기 (`ticket_detail_screen.dart`)**
+- `ConsumerStatefulWidget` 전환
+- USER: 상태 변경 버튼 비활성 + 안내 문구, 처리 메모 섹션 숨김
+- AGENT·ADMIN: 전체 기능 활성
+
+---
+
+**[6주차 — 담당자 배정·알림·자산 관리]**
+
+**[작업 11] 에이전트 목업 데이터 (`user_mock_data.dart` 신규)**
+- `MockUser` 클래스: id·name·email·role
+- `kMockAgents`: 5명 에이전트 목업 (이지훈·박수진·최민준·정다은·한승우)
+
+**[작업 12] 담당자 필드 추가 (`ticket_mock_data.dart` 수정)**
+- `MockTicket`에 `agentId`·`agentName` nullable 필드 추가
+- kMockTickets 7건(HF-002~011 중 처리중·완료 티켓)에 에이전트 배정 데이터 적용
+
+**[작업 13] 담당자 배정 UI (`ticket_detail_screen.dart` 추가)**
+- `_TicketInfoSection`: 담당자 표시 행 추가 (미배정 시 '미배정')
+- `_AgentAssignSection` (ADMIN 전용): kMockAgents 드롭다운 + 배정 SnackBar
+
+**[작업 14] 알림 화면 (`notifications_screen.dart` 신규)**
+- `MockNotification`: id·type·ticketId·message·isRead 모델
+- `NotificationType`: newTicket·ticketAssigned·statusChanged·noteAdded
+- `kMockNotifications`: 8건 목업 (읽음 4건·안읽음 4건)
+- 개별 탭 시 읽음 처리 + 해당 티켓 상세 이동, "모두 읽음" 버튼
+
+**[작업 15] 자산 관리 화면 (`assets_screen.dart` 신규)**
+- `MockAsset`: id·name·type·location·serialNumber 모델, `AssetType` enum 6종
+- `kMockAssets`: 10건 (노트북·데스크탑·프린터·네트워크·모니터·주변기기)
+- 타입별 FilterChip 필터, ADMIN FloatingActionButton (자산 등록 플레이스홀더)
+- QR 코드 아이콘 플레이스홀더 (9~10주차 mobile_scanner 연동 예정)
+
+**[작업 16] 라우터·사이드바·레이아웃 업데이트**
+- `app_router.dart`: `/notifications`·`/assets` ShellRoute에 추가
+- `sidebar_widget.dart`: `_navItemsFor(role)` 동적 메서드 — ADMIN에 자산 관리 항목 추가
+- `main_layout.dart`: 모바일 NavigationBar 알림 탭 추가 (4→5개)
+- `top_bar_widget.dart`: 알림 벨 아이콘 버튼 (/notifications 이동) + 타이틀 처리
+
+### 🐛 발생한 오류 & 해결 방법
+- `DropdownButtonFormField.value` deprecated → `initialValue`로 교체 (ticket_form, ticket_detail)
+- `_navItems` static const → 역할별 동적 목록 필요 → `_navItemsFor(role)` 메서드로 교체
+- `sidebar.dart` lint: navItems 선언 후 미사용 → build()에서 `navItems.map(...)` 참조로 해결
+
+### 📦 커밋 내역
+- `feat: 티켓 접수 폼·회원가입·역할 기반 UI 분기 구현 (5주차)` (0023252)
+- `feat: 설정·리포트 완전 구현, 대시보드 실데이터 연동, 역할 기반 UI (5주차)` (90ed35e)
+- `feat: 담당자 배정·알림·자산 관리 화면 구현 (6주차)` (c85e47d)
+
+### 🔗 연관 파일 목록 (신규/수정)
+**5주차**
+- `lib/views/tickets/ticket_form_screen.dart` (전면 재작성)
+- `lib/features/auth/register_screen.dart` (신규)
+- `lib/features/auth/auth_provider.dart` (role 필드·register() 추가)
+- `lib/features/auth/login_screen.dart` (회원가입 링크)
+- `lib/views/settings/settings_screen.dart` (전면 재작성)
+- `lib/views/reports/reports_screen.dart` (전면 재작성)
+- `lib/views/dashboard/dashboard_screen.dart` (실데이터 연동)
+- `lib/views/tickets/ticket_list_screen.dart` (검색·역할 필터)
+- `lib/views/tickets/ticket_detail_screen.dart` (역할 기반 UI)
+- `lib/core/router/app_router.dart` (/register·/notifications·/assets)
+- `lib/core/constants/app_strings.dart` (navReports 등 추가)
+
+**6주차**
+- `lib/views/users/user_mock_data.dart` (신규)
+- `lib/views/tickets/ticket_mock_data.dart` (agentId·agentName)
+- `lib/views/notifications/notifications_screen.dart` (신규)
+- `lib/views/assets/assets_screen.dart` (신규)
+- `lib/views/layout/sidebar_widget.dart` (역할별 동적 항목)
+- `lib/views/layout/main_layout.dart` (알림 탭 추가)
+- `lib/views/layout/top_bar_widget.dart` (알림 아이콘 버튼)
+
+---
 ## 📅 2026-03-25
 
 ### ✅ 완료한 작업

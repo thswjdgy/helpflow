@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/auth_provider.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/register_screen.dart';
+import '../../views/assets/assets_screen.dart';
 import '../../views/dashboard/dashboard_screen.dart';
+import '../../views/notifications/notifications_screen.dart';
 import '../../views/layout/main_layout.dart';
 import '../../views/reports/reports_screen.dart';
 import '../../views/settings/settings_screen.dart';
@@ -108,6 +110,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/reports',
             builder: (context, state) => const ReportsScreen(),
+          ),
+
+          // ── 알림 ────────────────────────────────────────────
+          GoRoute(
+            path: '/notifications',
+            builder: (context, state) => const NotificationsScreen(),
+          ),
+
+          // ── 자산 관리 (ADMIN 전용) ───────────────────────────
+          GoRoute(
+            path: '/assets',
+            builder: (context, state) => const AssetsScreen(),
           ),
 
           // ── 설정 ────────────────────────────────────────────

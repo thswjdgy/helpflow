@@ -135,11 +135,12 @@ class _MobileLayout extends StatelessWidget {
   const _MobileLayout({required this.child, required this.currentLocation});
 
   /// 현재 경로에서 하단 탭 선택 인덱스를 계산
-  /// 0: 홈(대시보드), 1: 티켓, 2: 리포트, 3: 설정
+  /// 0: 홈, 1: 티켓, 2: 리포트, 3: 알림, 4: 설정
   static int _getSelectedIndex(String location) {
     if (location.startsWith('/tickets')) return 1;
     if (location.startsWith('/reports')) return 2;
-    if (location.startsWith('/settings')) return 3;
+    if (location.startsWith('/notifications')) return 3;
+    if (location.startsWith('/settings')) return 4;
     return 0; // 대시보드 (기본값)
   }
 
@@ -148,6 +149,7 @@ class _MobileLayout extends StatelessWidget {
     '/dashboard',
     '/tickets',
     '/reports',
+    '/notifications',
     '/settings',
   ];
 
@@ -181,11 +183,17 @@ class _MobileLayout extends StatelessWidget {
             selectedIcon: Icon(Icons.confirmation_number),
             label: '티켓',
           ),
-          // 리포트 (7~8주차 구현 예정)
+          // 리포트
           NavigationDestination(
             icon: Icon(Icons.bar_chart_outlined),
             selectedIcon: Icon(Icons.bar_chart),
             label: '리포트',
+          ),
+          // 알림
+          NavigationDestination(
+            icon: Icon(Icons.notifications_outlined),
+            selectedIcon: Icon(Icons.notifications),
+            label: '알림',
           ),
           // 설정
           NavigationDestination(

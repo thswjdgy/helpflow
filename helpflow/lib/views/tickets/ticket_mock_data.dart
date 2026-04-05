@@ -29,6 +29,12 @@ class MockTicket {
   /// 티켓 접수 일시
   final DateTime createdAt;
 
+  /// 배정된 에이전트 ID (미배정 시 null)
+  final String? agentId;
+
+  /// 배정된 에이전트 이름 (미배정 시 null)
+  final String? agentName;
+
   const MockTicket({
     required this.id,
     required this.title,
@@ -38,6 +44,8 @@ class MockTicket {
     required this.category,
     required this.reporterEmail,
     required this.createdAt,
+    this.agentId,
+    this.agentName,
   });
 }
 
@@ -63,6 +71,8 @@ final List<MockTicket> kMockTickets = [
     category: 'software',
     reporterEmail: 'lee@company.com',
     createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+    agentId: 'agent-001',
+    agentName: '이지훈',
   ),
   MockTicket(
     id: 'HF-003',
@@ -73,6 +83,8 @@ final List<MockTicket> kMockTickets = [
     category: 'hardware',
     reporterEmail: 'park@company.com',
     createdAt: DateTime.now().subtract(const Duration(hours: 5)),
+    agentId: 'agent-002',
+    agentName: '박수진',
   ),
   MockTicket(
     id: 'HF-004',
@@ -83,6 +95,8 @@ final List<MockTicket> kMockTickets = [
     category: 'software',
     reporterEmail: 'choi@company.com',
     createdAt: DateTime.now().subtract(const Duration(days: 1)),
+    agentId: 'agent-001',
+    agentName: '이지훈',
   ),
   MockTicket(
     id: 'HF-005',
@@ -103,6 +117,8 @@ final List<MockTicket> kMockTickets = [
     category: 'software',
     reporterEmail: 'yoon@company.com',
     createdAt: DateTime.now().subtract(const Duration(days: 2)),
+    agentId: 'agent-003',
+    agentName: '최민준',
   ),
   MockTicket(
     id: 'HF-007',
@@ -123,6 +139,8 @@ final List<MockTicket> kMockTickets = [
     category: 'software',
     reporterEmail: 'oh@company.com',
     createdAt: DateTime.now().subtract(const Duration(days: 4)),
+    agentId: 'agent-004',
+    agentName: '정다은',
   ),
   MockTicket(
     id: 'HF-009',
@@ -143,6 +161,8 @@ final List<MockTicket> kMockTickets = [
     category: 'etc',
     reporterEmail: 'back@company.com',
     createdAt: DateTime.now().subtract(const Duration(days: 6)),
+    agentId: 'agent-005',
+    agentName: '한승우',
   ),
   MockTicket(
     id: 'HF-011',
@@ -153,6 +173,8 @@ final List<MockTicket> kMockTickets = [
     category: 'software',
     reporterEmail: 'kwon@company.com',
     createdAt: DateTime.now().subtract(const Duration(days: 7)),
+    agentId: 'agent-001',
+    agentName: '이지훈',
   ),
   MockTicket(
     id: 'HF-012',

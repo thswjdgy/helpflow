@@ -42,33 +42,50 @@ class SidebarWidget extends ConsumerWidget {
     this.onClose,
   });
 
-  // ── 네비게이션 항목 목록 ──────────────────────────────────────
-  static const List<_NavItem> _navItems = [
-    _NavItem(
-      label: AppStrings.navDashboard,
-      icon: Icons.dashboard_outlined,
-      selectedIcon: Icons.dashboard,
-      route: '/dashboard',
-    ),
-    _NavItem(
-      label: AppStrings.navTickets,
-      icon: Icons.confirmation_number_outlined,
-      selectedIcon: Icons.confirmation_number,
-      route: '/tickets',
-    ),
-    _NavItem(
-      label: AppStrings.navReports,
-      icon: Icons.bar_chart_outlined,
-      selectedIcon: Icons.bar_chart,
-      route: '/reports',
-    ),
-    _NavItem(
-      label: AppStrings.navSettings,
-      icon: Icons.settings_outlined,
-      selectedIcon: Icons.settings,
-      route: '/settings',
-    ),
-  ];
+  /// 역할에 따라 표시할 네비게이션 항목 목록 반환
+  /// ADMIN: 자산 관리 항목 추가 / 전체: 알림 항목 포함
+  static List<_NavItem> _navItemsFor(String role) {
+    return [
+      const _NavItem(
+        label: AppStrings.navDashboard,
+        icon: Icons.dashboard_outlined,
+        selectedIcon: Icons.dashboard,
+        route: '/dashboard',
+      ),
+      const _NavItem(
+        label: AppStrings.navTickets,
+        icon: Icons.confirmation_number_outlined,
+        selectedIcon: Icons.confirmation_number,
+        route: '/tickets',
+      ),
+      const _NavItem(
+        label: AppStrings.navReports,
+        icon: Icons.bar_chart_outlined,
+        selectedIcon: Icons.bar_chart,
+        route: '/reports',
+      ),
+      const _NavItem(
+        label: AppStrings.navNotifications,
+        icon: Icons.notifications_outlined,
+        selectedIcon: Icons.notifications,
+        route: '/notifications',
+      ),
+      // ADMIN 전용: 자산 관리
+      if (role == 'admin')
+        const _NavItem(
+          label: AppStrings.navAssets,
+          icon: Icons.inventory_2_outlined,
+          selectedIcon: Icons.inventory_2,
+          route: '/assets',
+        ),
+      const _NavItem(
+        label: AppStrings.navSettings,
+        icon: Icons.settings_outlined,
+        selectedIcon: Icons.settings,
+        route: '/settings',
+      ),
+    ];
+  }
 
   /// 현재 경로가 해당 항목의 활성 경로인지 확인
   bool _isActive(String itemRoute) {
@@ -82,6 +99,9 @@ class SidebarWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    // 현재 역할에 따라 표시할 항목 목록 결정
+    final role = ref.watch(authProvider).valueOrNull?.role ?? 'user';
+    final navItems = _navItemsFor(role);
 
     // 가로 너비: 접힌 상태(64) or 펼친 상태(240)
     final double sidebarW =
@@ -114,7 +134,7 @@ class SidebarWidget extends ConsumerWidget {
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              children: _navItems.map((item) {
+              children: navItems.map((item) {
                 return _NavItemTile(
                   item: item,
                   isActive: _isActive(item.route),

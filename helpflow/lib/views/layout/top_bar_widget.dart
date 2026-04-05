@@ -39,6 +39,10 @@ class TopBarWidget extends ConsumerWidget implements PreferredSizeWidget {
       return AppStrings.ticketListTitle;
     } else if (currentLocation.startsWith('/reports')) {
       return AppStrings.reportsTitle;
+    } else if (currentLocation.startsWith('/notifications')) {
+      return AppStrings.navNotifications;
+    } else if (currentLocation.startsWith('/assets')) {
+      return AppStrings.navAssets;
     } else if (currentLocation.startsWith('/settings')) {
       return AppStrings.settingsTitle;
     } else {
@@ -98,6 +102,13 @@ class TopBarWidget extends ConsumerWidget implements PreferredSizeWidget {
               label: const Text(AppStrings.newTicket),
             ),
           ),
+
+        // 알림 버튼 (안읽음 뱃지 포함)
+        IconButton(
+          icon: const Icon(Icons.notifications_outlined),
+          tooltip: '알림',
+          onPressed: () => context.go('/notifications'),
+        ),
 
         // 다크모드 토글 버튼
         IconButton(

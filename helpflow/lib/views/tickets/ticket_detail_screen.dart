@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/design_system.dart';
 import '../../features/auth/auth_provider.dart';
+import '../users/user_mock_data.dart';
 import 'ticket_mock_data.dart';
 
 // ── 파일 레벨 헬퍼 함수 ──────────────────────────────────────
@@ -139,6 +140,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
     // USER 역할은 읽기 전용 (상태 변경·메모 입력 비활성)
     final userRole = ref.watch(authProvider).valueOrNull?.role ?? 'user';
     final isReadOnly = userRole == 'user';
+    final isAdmin = userRole == 'admin';
 
     return Scaffold(
       backgroundColor: HelpFlowColors.background,
@@ -151,6 +153,12 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
             _TicketInfoSection(ticket: _ticket!),
 
             const SizedBox(height: HelpFlowSpacing.xxl),
+
+            // ADMIN 전용: 담당자 배정 섹션
+            if (isAdmin) ...[
+              _AgentAssignSection(ticket: _ticket!),
+              const SizedBox(height: HelpFlowSpacing.xxl),
+            ],
 
             // 상태 변경 섹션 (USER는 읽기 전용)
             _StatusSection(
@@ -218,6 +226,11 @@ class _TicketInfoSection extends StatelessWidget {
               colorScheme: colorScheme,
             ),
             _InfoRow(
+              label: '담당자',
+              value: ticket.agentName ?? '미배정',
+              colorScheme: colorScheme,
+            ),
+            _InfoRow(
               label: '접수일',
               value:
                   '${ticket.createdAt.year}.${ticket.createdAt.month.toString().padLeft(2, '0')}.${ticket.createdAt.day.toString().padLeft(2, '0')}',
@@ -275,15 +288,18 @@ class _InfoRow extends StatelessWidget {
 
 // ── 상태 변경 섹션 ────────────────────────────────────────────
 /// 현재 상태 배지 + 다음 상태로 변경하는 버튼을 포함하는 카드
+/// isReadOnly=true(USER 역할)이면 상태 변경 버튼 대신 안내 문구를 표시합니다.
 class _StatusSection extends StatelessWidget {
   final String currentStatus;
   final String? nextStatus; // null이면 최종 상태 (버튼 미표시)
   final VoidCallback onStatusChange;
+  final bool isReadOnly;
 
   const _StatusSection({
     required this.currentStatus,
     required this.nextStatus,
     required this.onStatusChange,
+    this.isReadOnly = false,
   });
 
   @override
@@ -301,8 +317,15 @@ class _StatusSection extends StatelessWidget {
             _CurrentStatusBadge(status: currentStatus),
             const SizedBox(height: HelpFlowSpacing.lg),
 
-            // 상태 변경 버튼 또는 완료 표시
-            if (nextStatus != null)
+            // 읽기 전용(USER): 안내 문구 표시
+            if (isReadOnly)
+              Text(
+                '상태 변경은 에이전트·관리자만 가능합니다.',
+                style: const TextStyle(
+                    fontSize: 13, color: HelpFlowColors.gray400),
+              )
+            // 상태 변경 버튼 또는 최종 완료 표시 (AGENT·ADMIN)
+            else if (nextStatus != null)
               FilledButton.icon(
                 onPressed: onStatusChange,
                 icon: const Icon(Icons.arrow_forward, size: 16),
@@ -418,10 +441,94 @@ class _NoteSection extends StatelessWidget {
   }
 }
 
+// ── 담당자 배정 섹션 (ADMIN 전용) ────────────────────────────
+/// ADMIN이 kMockAgents 목록에서 담당 에이전트를 선택하여 배정하는 카드
+class _AgentAssignSection extends StatefulWidget {
+  final MockTicket ticket;
+
+  const _AgentAssignSection({required this.ticket});
+
+  @override
+  State<_AgentAssignSection> createState() => _AgentAssignSectionState();
+}
+
+class _AgentAssignSectionState extends State<_AgentAssignSection> {
+  /// 현재 선택된 에이전트 ID (초기값: 티켓에 이미 배정된 에이전트)
+  String? _selectedAgentId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedAgentId = widget.ticket.agentId;
+  }
+
+  /// 배정 버튼 핸들러 — 로컬 상태만 변경 (Firestore 연동 전)
+  void _onAssign() {
+    final agent = kMockAgents.firstWhere((a) => a.id == _selectedAgentId);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${agent.name}님에게 배정되었습니다'),
+        backgroundColor: AppColors.success,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(HelpFlowSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('담당자 배정', style: HelpFlowTextStyles.headline3),
+            const SizedBox(height: HelpFlowSpacing.md),
+
+            // 에이전트 선택 드롭다운
+            DropdownButtonFormField<String>(
+              initialValue: _selectedAgentId,
+              hint: const Text('담당 에이전트 선택'),
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: HelpFlowColors.gray100),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: HelpFlowSpacing.md,
+                  vertical: HelpFlowSpacing.md,
+                ),
+              ),
+              items: kMockAgents
+                  .map((a) => DropdownMenuItem(
+                        value: a.id,
+                        child: Text('${a.name} (${a.email})'),
+                      ))
+                  .toList(),
+              onChanged: (v) => setState(() => _selectedAgentId = v),
+            ),
+            const SizedBox(height: HelpFlowSpacing.md),
+
+            // 배정 버튼
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                onPressed: _selectedAgentId == null ? null : _onAssign,
+                icon: const Icon(Icons.person_add_outlined, size: 16),
+                label: const Text('배정'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // [파일 요약]
 // 티켓 상세 화면입니다.
-// _TicketInfoSection  : 제목·설명·카테고리·접수자·접수일 표시 카드
-// _StatusSection      : 현재 상태 배지 + 다음 상태 변경 버튼 (new→in_progress→resolved)
-// _NoteSection        : 처리 내용 텍스트 입력 + 저장 버튼
-// 상태 변경과 메모 저장은 로컬 State로 관리하며, SnackBar로 피드백을 제공합니다.
-// Firestore 연동 시 _onStatusChange/_onNoteSubmit 에서 ticketProvider를 호출하도록 교체합니다.
+// _TicketInfoSection   : 제목·설명·카테고리·접수자·담당자·접수일 표시 카드
+// _AgentAssignSection  : ADMIN 전용 — kMockAgents 드롭다운으로 담당자 배정
+// _StatusSection       : 현재 상태 배지 + 다음 상태 변경 버튼 (USER는 읽기 전용)
+// _NoteSection         : AGENT·ADMIN 전용 처리 내용 입력 + 저장 버튼
+// Firestore 연동 시 _onStatusChange/_onNoteSubmit/_onAssign에서 ticketProvider 호출로 교체합니다.
