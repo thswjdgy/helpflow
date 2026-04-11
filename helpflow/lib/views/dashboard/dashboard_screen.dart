@@ -1,36 +1,42 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/constants/app_strings.dart';
+import '../../features/tickets/tickets_provider.dart';
 import '../tickets/ticket_mock_data.dart';
 
 /// 대시보드 화면
-/// - kMockTickets 집계 통계 카드 4개 (Wrap으로 반응형 배치)
-/// - 차트 플레이스홀더 (7~8주차 fl_chart 연동 예정)
-/// - kMockTickets 최근 4건 티켓 목록
-class DashboardScreen extends StatelessWidget {
+/// - ticketsProvider 집계 통계 카드 4개 (Wrap으로 반응형 배치)
+/// - fl_chart PieChart 상태별 분포 차트
+/// - ticketsProvider 최근 4건 티켓 목록
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // ticketsProvider 구독 — 하위 위젯에 전달
+    final tickets = ref.watch(ticketsProvider);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSizes.spacingLg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── 통계 카드 영역 ────────────────────────────────────
-          const _StatCardsSection(),
+          _StatCardsSection(tickets: tickets),
 
           const SizedBox(height: AppSizes.spacingLg),
 
-          // ── 차트 플레이스홀더 ─────────────────────────────────
-          const _ChartPlaceholder(),
+          // ── 상태별 파이 차트 (fl_chart) ───────────────────────
+          _StatusPieChart(tickets: tickets),
 
           const SizedBox(height: AppSizes.spacingLg),
 
           // ── 최근 티켓 목록 ────────────────────────────────────
-          const _RecentTicketsSection(),
+          _RecentTicketsSection(tickets: tickets),
         ],
       ),
     );
@@ -38,47 +44,46 @@ class DashboardScreen extends StatelessWidget {
 }
 
 // ── 통계 카드 섹션 ────────────────────────────────────────────
-/// kMockTickets를 집계하여 4개의 통계 카드를 Wrap으로 반응형 배치
+/// ticketsProvider에서 받은 목록을 집계하여 4개의 통계 카드를 Wrap으로 반응형 배치
 class _StatCardsSection extends StatelessWidget {
-  const _StatCardsSection();
+  final List<MockTicket> tickets;
 
-  // kMockTickets 실시간 집계값
-  static int get _total => kMockTickets.length;
-  static int get _inProgress =>
-      kMockTickets.where((t) => t.status == 'in_progress').length;
-  static int get _done =>
-      kMockTickets.where((t) => t.status == 'resolved').length;
-  static int get _pending =>
-      kMockTickets.where((t) => t.status == 'new').length;
+  const _StatCardsSection({required this.tickets});
 
   @override
   Widget build(BuildContext context) {
+    // ticketsProvider 집계값
+    final total = tickets.length;
+    final inProgress = tickets.where((t) => t.status == 'in_progress').length;
+    final done = tickets.where((t) => t.status == 'resolved').length;
+    final pending = tickets.where((t) => t.status == 'new').length;
+
     // 집계 완료 후 카드 데이터 구성
     final stats = [
       _StatCardData(
         title: AppStrings.statsTotal,
-        value: '$_total',
+        value: '$total',
         unit: '건',
         icon: Icons.confirmation_number_outlined,
         color: AppColors.primary,
       ),
       _StatCardData(
         title: AppStrings.statsInProgress,
-        value: '$_inProgress',
+        value: '$inProgress',
         unit: '건',
         icon: Icons.pending_outlined,
         color: AppColors.warning,
       ),
       _StatCardData(
         title: AppStrings.statsDone,
-        value: '$_done',
+        value: '$done',
         unit: '건',
         icon: Icons.check_circle_outline,
         color: AppColors.success,
       ),
       _StatCardData(
         title: AppStrings.statsPending,
-        value: '$_pending',
+        value: '$pending',
         unit: '건',
         icon: Icons.warning_amber_outlined,
         color: AppColors.error,
@@ -203,53 +208,111 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-// ── 차트 플레이스홀더 ─────────────────────────────────────────
-/// 7~8주차 fl_chart 연동 전까지 표시하는 플레이스홀더
-class _ChartPlaceholder extends StatelessWidget {
-  const _ChartPlaceholder();
+// ── 상태별 파이 차트 ──────────────────────────────────────────
+/// ticketsProvider 목록을 상태별로 집계하여 fl_chart PieChart로 표시하는 섹션
+class _StatusPieChart extends StatelessWidget {
+  final List<MockTicket> tickets;
+
+  const _StatusPieChart({required this.tickets});
+
+  /// 상태 값 → 한국어 레이블
+  static String _label(String s) {
+    const m = {'new': '새 티켓', 'in_progress': '처리중', 'resolved': '완료', 'closed': '종료'};
+    return m[s] ?? s;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    if (tickets.isEmpty) return const SizedBox.shrink();
+
+    // 상태별 건수 집계
+    final counts = <String, int>{
+      'new': tickets.where((t) => t.status == 'new').length,
+      'in_progress': tickets.where((t) => t.status == 'in_progress').length,
+      'resolved': tickets.where((t) => t.status == 'resolved').length,
+      'closed': tickets.where((t) => t.status == 'closed').length,
+    };
+    final colors = {
+      'new': AppColors.statusNew,
+      'in_progress': AppColors.statusInProgress,
+      'resolved': AppColors.statusDone,
+      'closed': AppColors.statusOnHold,
+    };
+
+    // 건수가 0인 항목은 파이 섹션에서 제외
+    final sections = counts.entries
+        .where((e) => e.value > 0)
+        .map((e) => PieChartSectionData(
+              value: e.value.toDouble(),
+              color: colors[e.key],
+              title: '${e.value}',
+              radius: 56,
+              titleStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ))
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '티켓 추이',
+          '상태별 티켓 분포',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
         ),
         const SizedBox(height: AppSizes.spacingMd),
-        Container(
-          height: 200,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest.withAlpha(80),
-            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            border: Border.all(
-              color: colorScheme.outlineVariant,
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.bar_chart_outlined,
-                size: 48,
-                color: colorScheme.onSurfaceVariant.withAlpha(100),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                AppStrings.chartPlaceholder,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSizes.spacingMd),
+            child: Row(
+              children: [
+                // 파이 차트 (좌측)
+                SizedBox(
+                  height: 160,
+                  width: 160,
+                  child: PieChart(
+                    PieChartData(
+                      sections: sections,
+                      centerSpaceRadius: 36,
+                      sectionsSpace: 2,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: AppSizes.spacingLg),
+
+                // 범례 (우측)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: counts.entries.map((e) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: colors[e.key],
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${_label(e.key)}  ${e.value}건',
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        )).toList(),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -258,20 +321,19 @@ class _ChartPlaceholder extends StatelessWidget {
 }
 
 // ── 최근 티켓 목록 ────────────────────────────────────────────
-/// kMockTickets를 최신순으로 정렬하여 상위 4건을 표시하는 섹션
+/// ticketsProvider 목록을 최신순으로 정렬하여 상위 4건을 표시하는 섹션
 class _RecentTicketsSection extends StatelessWidget {
-  const _RecentTicketsSection();
+  final List<MockTicket> tickets;
 
-  /// kMockTickets에서 최신 4건 추출
-  static List<MockTicket> get _recentTickets {
-    final sorted = List<MockTicket>.from(kMockTickets)
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return sorted.take(4).toList();
-  }
+  const _RecentTicketsSection({required this.tickets});
 
   @override
   Widget build(BuildContext context) {
-    final tickets = _recentTickets;
+    // 최신순 정렬 후 4건 추출
+    final recent = (List<MockTicket>.from(tickets)
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt)))
+        .take(4)
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -295,7 +357,7 @@ class _RecentTicketsSection extends StatelessWidget {
         const SizedBox(height: AppSizes.spacingSm),
         Card(
           child: Column(
-            children: tickets
+            children: recent
                 .map((ticket) => _TicketListItem(ticket: ticket))
                 .toList(),
           ),

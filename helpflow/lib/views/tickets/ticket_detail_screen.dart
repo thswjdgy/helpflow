@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/design_system.dart';
 import '../../features/auth/auth_provider.dart';
+import '../../features/tickets/tickets_provider.dart';
 import '../users/user_mock_data.dart';
 import 'ticket_mock_data.dart';
 
@@ -62,53 +63,40 @@ class TicketDetailScreen extends ConsumerStatefulWidget {
 
 /// 티켓 상세 화면 상태 클래스
 class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
-  MockTicket? _ticket; // 조회된 목업 티켓 (없으면 null)
-  String _currentStatus = ''; // 화면 내 로컬 상태 (변경 즉시 반영)
+  /// 처리 메모 입력 컨트롤러 (상태·티켓 데이터는 Provider에서 직접 읽음)
   final TextEditingController _noteCtrl = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    // ticketId로 목업 목록에서 티켓 검색
-    _ticket = kMockTickets
-        .where((t) => t.id == widget.ticketId)
-        .firstOrNull;
-    _currentStatus = _ticket?.status ?? '';
-  }
-
-  @override
   void dispose() {
-    _noteCtrl.dispose(); // 텍스트 컨트롤러 메모리 해제
+    _noteCtrl.dispose();
     super.dispose();
   }
 
   /// 현재 상태에서 다음 상태 반환 (resolved/closed 이후는 null)
-  String? _nextStatus() {
-    switch (_currentStatus) {
+  String? _nextStatus(String current) {
+    switch (current) {
       case 'new':
         return 'in_progress';
       case 'in_progress':
         return 'resolved';
       default:
-        return null; // 더 이상 전진 없음
+        return null;
     }
   }
 
-  /// 상태 변경 버튼 핸들러 — 로컬 상태만 변경 (Firestore 연동 전)
-  void _onStatusChange() {
-    final next = _nextStatus();
-    if (next == null) return;
-    setState(() => _currentStatus = next);
+  /// 상태 변경 버튼 핸들러 — ticketsProvider를 통해 실제 상태 업데이트
+  void _onStatusChange(String ticketId, String nextStatus) {
+    ref.read(ticketsProvider.notifier).updateStatus(ticketId, nextStatus);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('상태가 "${_statusLabel(next)}"(으)로 변경되었습니다'),
+        content: Text('상태가 "${_statusLabel(nextStatus)}"(으)로 변경되었습니다'),
         backgroundColor: AppColors.success,
         duration: const Duration(seconds: 2),
       ),
     );
   }
 
-  /// 처리 메모 저장 핸들러 — SnackBar로 피드백 (Firestore 연동 전)
+  /// 처리 메모 저장 핸들러 — SnackBar 피드백 (Firestore 연동 전)
   void _onNoteSubmit() {
     if (_noteCtrl.text.trim().isEmpty) return;
     _noteCtrl.clear();
@@ -123,15 +111,19 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ticketsProvider 구독 → 상태 변경·담당자 배정 시 자동 반영
+    final ticket = ref.watch(ticketsProvider)
+        .where((t) => t.id == widget.ticketId)
+        .firstOrNull;
+
     // 티켓을 찾지 못한 경우
-    if (_ticket == null) {
+    if (ticket == null) {
       return Scaffold(
         backgroundColor: HelpFlowColors.background,
         body: Center(
           child: Text(
             '티켓을 찾을 수 없습니다 (ID: ${widget.ticketId})',
-            style: HelpFlowTextStyles.body1
-                .copyWith(color: HelpFlowColors.gray400),
+            style: HelpFlowTextStyles.body1.copyWith(color: HelpFlowColors.gray400),
           ),
         ),
       );
@@ -141,6 +133,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
     final userRole = ref.watch(authProvider).valueOrNull?.role ?? 'user';
     final isReadOnly = userRole == 'user';
     final isAdmin = userRole == 'admin';
+    final next = isReadOnly ? null : _nextStatus(ticket.status);
 
     return Scaffold(
       backgroundColor: HelpFlowColors.background,
@@ -150,21 +143,21 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 티켓 기본 정보 카드
-            _TicketInfoSection(ticket: _ticket!),
+            _TicketInfoSection(ticket: ticket),
 
             const SizedBox(height: HelpFlowSpacing.xxl),
 
             // ADMIN 전용: 담당자 배정 섹션
             if (isAdmin) ...[
-              _AgentAssignSection(ticket: _ticket!),
+              _AgentAssignSection(ticket: ticket),
               const SizedBox(height: HelpFlowSpacing.xxl),
             ],
 
             // 상태 변경 섹션 (USER는 읽기 전용)
             _StatusSection(
-              currentStatus: _currentStatus,
-              nextStatus: isReadOnly ? null : _nextStatus(),
-              onStatusChange: _onStatusChange,
+              currentStatus: ticket.status,
+              nextStatus: next,
+              onStatusChange: () => _onStatusChange(ticket.id, next!),
               isReadOnly: isReadOnly,
             ),
 
@@ -443,16 +436,17 @@ class _NoteSection extends StatelessWidget {
 
 // ── 담당자 배정 섹션 (ADMIN 전용) ────────────────────────────
 /// ADMIN이 kMockAgents 목록에서 담당 에이전트를 선택하여 배정하는 카드
-class _AgentAssignSection extends StatefulWidget {
+/// ticketsProvider.assignAgent()를 통해 실제 상태 업데이트
+class _AgentAssignSection extends ConsumerStatefulWidget {
   final MockTicket ticket;
 
   const _AgentAssignSection({required this.ticket});
 
   @override
-  State<_AgentAssignSection> createState() => _AgentAssignSectionState();
+  ConsumerState<_AgentAssignSection> createState() => _AgentAssignSectionState();
 }
 
-class _AgentAssignSectionState extends State<_AgentAssignSection> {
+class _AgentAssignSectionState extends ConsumerState<_AgentAssignSection> {
   /// 현재 선택된 에이전트 ID (초기값: 티켓에 이미 배정된 에이전트)
   String? _selectedAgentId;
 
@@ -462,9 +456,15 @@ class _AgentAssignSectionState extends State<_AgentAssignSection> {
     _selectedAgentId = widget.ticket.agentId;
   }
 
-  /// 배정 버튼 핸들러 — 로컬 상태만 변경 (Firestore 연동 전)
+  /// 배정 버튼 핸들러 — ticketsProvider를 통해 실제 배정 처리
   void _onAssign() {
+    if (_selectedAgentId == null) return;
     final agent = kMockAgents.firstWhere((a) => a.id == _selectedAgentId);
+    ref.read(ticketsProvider.notifier).assignAgent(
+          widget.ticket.id,
+          agent.id,
+          agent.name,
+        );
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${agent.name}님에게 배정되었습니다'),
@@ -528,7 +528,7 @@ class _AgentAssignSectionState extends State<_AgentAssignSection> {
 // [파일 요약]
 // 티켓 상세 화면입니다.
 // _TicketInfoSection   : 제목·설명·카테고리·접수자·담당자·접수일 표시 카드
-// _AgentAssignSection  : ADMIN 전용 — kMockAgents 드롭다운으로 담당자 배정
+// _AgentAssignSection  : ADMIN 전용 ConsumerStatefulWidget — ticketsProvider.assignAgent() 실제 연동
 // _StatusSection       : 현재 상태 배지 + 다음 상태 변경 버튼 (USER는 읽기 전용)
 // _NoteSection         : AGENT·ADMIN 전용 처리 내용 입력 + 저장 버튼
-// Firestore 연동 시 _onStatusChange/_onNoteSubmit/_onAssign에서 ticketProvider 호출로 교체합니다.
+// ticketsProvider 구독: 상태 변경·담당자 배정 시 화면이 자동으로 재빌드됩니다.

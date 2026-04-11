@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/design_system.dart';
 import '../../features/auth/auth_provider.dart';
+import '../../features/tickets/tickets_provider.dart';
 import 'ticket_mock_data.dart';
 
 /// 티켓 목록 화면
@@ -59,17 +60,17 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
   // 우선순위 정렬 기준 순서 (critical > high > medium > low)
   static const List<String> _priorityOrder = ['critical', 'high', 'medium', 'low'];
 
-  /// 현재 검색어·필터·정렬·역할 조건이 모두 적용된 티켓 목록 반환
-  List<MockTicket> get _filteredTickets {
+  /// allTickets·user를 받아 검색어·필터·정렬·역할 조건을 모두 적용한 목록 반환
+  /// ref.watch()는 build()에서만 호출하고, 이 메서드에는 결과값을 인자로 전달합니다.
+  List<MockTicket> _filterTickets(List<MockTicket> allTickets, String? role, String? email) {
     final query = _searchQuery.trim().toLowerCase();
-    final user = ref.read(authProvider).valueOrNull;
 
-    // 0단계: USER 역할이면 본인 이메일 티켓만, AGENT/ADMIN은 전체
-    final base = (user?.role == 'user' && user?.email != null)
-        ? kMockTickets.where((t) => t.reporterEmail == user!.email).toList()
-        : List<MockTicket>.from(kMockTickets);
+    // 0단계: USER 역할이면 본인 이메일 티켓만, AGENT·ADMIN은 전체
+    final base = (role == 'user' && email != null)
+        ? allTickets.where((t) => t.reporterEmail == email).toList()
+        : List<MockTicket>.from(allTickets);
 
-    // 1단계: 검색어 + 상태 + 우선순위 필터 AND 조건 적용
+    // 1단계: 검색어 + 상태 + 우선순위 AND 조건 적용
     var list = base.where((t) {
       final searchOk = query.isEmpty ||
           t.title.toLowerCase().contains(query) ||
@@ -97,7 +98,10 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tickets = _filteredTickets;
+    // ticketsProvider 전역 상태 구독 (새 티켓 추가 시 자동 반영)
+    final allTickets = ref.watch(ticketsProvider);
+    final authUser = ref.watch(authProvider).valueOrNull;
+    final tickets = _filterTickets(allTickets, authUser?.role, authUser?.email);
 
     return Scaffold(
       backgroundColor: HelpFlowColors.background,
@@ -430,8 +434,8 @@ class _StatusBadge extends StatelessWidget {
 
 // [파일 요약]
 // 티켓 목록 화면입니다.
-// _FilterSection: 상태·우선순위 FilterChip + 정렬 DropdownButton (가로 스크롤)
-// _TicketCard   : 개별 티켓 행 (ID / 제목·메타 / 우선순위·상태 배지) — 탭 시 상세 이동
-// _StatusBadge  : 색상 배지 위젯 (목록 공용)
-// 필터·정렬 상태는 StatefulWidget 로컬 State로 관리합니다.
-// Firestore 연동 시 kMockTickets → ref.watch(ticketProvider) 로 교체합니다.
+// _FilterSection : 상태·우선순위 FilterChip + 정렬 DropdownButton (가로 스크롤)
+// _TicketCard    : 개별 티켓 행 (ID / 제목·메타 / 우선순위·상태 배지) — 탭 시 상세 이동
+// _StatusBadge   : 색상 배지 위젯 (목록 공용)
+// ticketsProvider 구독: 새 티켓 접수·상태 변경 시 목록이 자동으로 갱신됩니다.
+// USER 역할: 본인 이메일 티켓만 / AGENT·ADMIN: 전체 표시

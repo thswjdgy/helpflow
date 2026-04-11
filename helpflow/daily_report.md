@@ -1,4 +1,75 @@
 ---
+## 📅 2026-04-11
+
+### ✅ 완료한 작업
+
+**[7주차 — 티켓 전역 Provider 실동작 + fl_chart 차트 연동]**
+
+**[작업 1] MockTicket.copyWith() 추가 (`ticket_mock_data.dart`)**
+- 불변 상태 업데이트를 위한 `copyWith()` 메서드 추가
+- Provider에서 특정 필드만 바꾼 복사본을 state에 반영하는 패턴 적용
+
+**[작업 2] notifications_provider.dart 수정**
+- `addNotification(MockNotification)` 메서드 추가
+- 티켓 CRUD 시 TicketsNotifier에서 직접 호출
+
+**[작업 3] tickets_provider.dart 신규 (`lib/features/tickets/`)**
+- `TicketsNotifier extends Notifier<List<MockTicket>>`: kMockTickets 초기값
+- `addTicket()`: ID 자동생성(HF-013…), 알림(newTicket) 자동 push
+- `updateStatus()`: 상태 불변 업데이트 + 알림(statusChanged) push
+- `assignAgent()`: 담당자 불변 업데이트 + 알림(ticketAssigned) push
+- `ticketsProvider`: 앱 전역 NotifierProvider
+
+**[작업 4] ticket_form_screen.dart 수정**
+- 제출 시 `ticketsProvider.notifier.addTicket()` 실제 호출
+- 이후 SnackBar + `/tickets` 이동 유지
+
+**[작업 5] ticket_list_screen.dart 수정**
+- `kMockTickets` 직접 참조 → `ref.watch(ticketsProvider)` 구독
+- `_filteredTickets` getter → `_filterTickets(allTickets, role, email)` 메서드로 변경
+  (ref.watch는 build()에서만 호출하도록 리팩터)
+
+**[작업 6] ticket_detail_screen.dart 수정**
+- `_ticket`·`_currentStatus` 로컬 필드 제거 → `ref.watch(ticketsProvider)` 구독
+- `_onStatusChange()`: `ticketsProvider.notifier.updateStatus()` 실제 연동
+- `_AgentAssignSection`: `StatefulWidget` → `ConsumerStatefulWidget` 전환
+  `_onAssign()`: `ticketsProvider.notifier.assignAgent()` 실제 연동
+- 상태 변경·담당자 배정 시 화면 자동 재빌드
+
+**[작업 7] pubspec.yaml — fl_chart 활성화**
+- `fl_chart: ^0.68.0` 주석 해제 후 `flutter pub get`
+
+**[작업 8] dashboard_screen.dart 수정**
+- `DashboardScreen`: `StatelessWidget` → `ConsumerWidget` 전환
+- `_StatCardsSection`, `_RecentTicketsSection`: `tickets` 파라미터 수신
+- `_ChartPlaceholder` → `_StatusPieChart` (fl_chart PieChart 상태별 분포)
+  - 도넛 형태 + 범례 (색상 원·레이블·건수)
+
+**[작업 9] reports_screen.dart 수정**
+- `ReportsScreen`: `StatelessWidget` → `ConsumerWidget` 전환, ticketsProvider 구독
+- `_SummaryCards`: `tickets` 파라미터 수신
+- 상태별 LinearProgressIndicator 섹션 → `_StatusPieChart` (fl_chart) 교체
+- 카테고리·우선순위 분포는 기존 LinearProgressIndicator 유지
+
+### 🐛 발생한 오류 & 해결 방법
+- `_StatCardsSection` / `_SummaryCards`의 static getter `_total` 등 삭제 누락 → 로컬 변수(`total`, `inProgress` 등)로 교체
+- `_RecentTicketsSection` 지역변수 `recent`를 `tickets`로 참조하던 코드 → `recent`로 통일
+
+### 📦 커밋 내역
+- `feat: 티켓 전역 Provider 실동작 + fl_chart PieChart 연동 (7주차)` (e7ba2c9)
+
+### 🔗 연관 파일 목록 (신규/수정)
+- `lib/views/tickets/ticket_mock_data.dart` (copyWith 추가)
+- `lib/features/notifications/notifications_provider.dart` (addNotification 추가)
+- `lib/features/tickets/tickets_provider.dart` (신규)
+- `lib/views/tickets/ticket_form_screen.dart` (ticketsProvider 연동)
+- `lib/views/tickets/ticket_list_screen.dart` (ticketsProvider 구독)
+- `lib/views/tickets/ticket_detail_screen.dart` (Provider 연동, ConsumerStatefulWidget)
+- `pubspec.yaml` (fl_chart 활성화)
+- `lib/views/dashboard/dashboard_screen.dart` (ConsumerWidget + PieChart)
+- `lib/views/reports/reports_screen.dart` (ConsumerWidget + PieChart)
+
+---
 ## 📅 2026-04-05
 
 ### ✅ 완료한 작업
@@ -86,15 +157,34 @@
 - `main_layout.dart`: 모바일 NavigationBar 알림 탭 추가 (4→5개)
 - `top_bar_widget.dart`: 알림 벨 아이콘 버튼 (/notifications 이동) + 타이틀 처리
 
+**[작업 17] 알림 전역 상태 Provider (`notifications_provider.dart` 신규)**
+- `NotificationsNotifier` (Notifier): kMockNotifications 초기값, `markRead(id)` / `markAllRead()` 메서드
+- `notificationsProvider`: 앱 전역 알림 목록 NotifierProvider
+- `unreadCountProvider`: 안읽음 개수 파생 Provider (TopBar 배지 최적화용)
+
+**[작업 18] TopBar 알림 배지 (`top_bar_widget.dart` 수정)**
+- 알림 IconButton을 Material 3 `Badge` 위젯으로 래핑
+- `ref.watch(unreadCountProvider)` 구독 → 안읽음 0건이면 배지 숨김
+- ConsumerWidget으로 `authProvider`·`unreadCountProvider` 두 Provider 동시 구독
+
+**[작업 19] 알림 화면 Provider 연동 (`notifications_screen.dart` 수정)**
+- `StatefulWidget` → `ConsumerWidget` 전환 (로컬 `_notifications` 필드 제거)
+- `build()`: `ref.watch(notificationsProvider)` / `ref.watch(unreadCountProvider)` 구독
+- `markAllRead` / `onTap` 콜백: `ref.read(notificationsProvider.notifier)` 위임
+- TopBar 배지와 알림 화면이 동일 Provider를 공유 → 탭 시 배지 즉시 감소
+
 ### 🐛 발생한 오류 & 해결 방법
 - `DropdownButtonFormField.value` deprecated → `initialValue`로 교체 (ticket_form, ticket_detail)
 - `_navItems` static const → 역할별 동적 목록 필요 → `_navItemsFor(role)` 메서드로 교체
 - `sidebar.dart` lint: navItems 선언 후 미사용 → build()에서 `navItems.map(...)` 참조로 해결
+- NotificationsScreen 로컬 State → Provider로 전환 전 TopBar `unused import` 경고 발생 → Badge 위젯 추가로 즉시 해결
+- `separatorBuilder: (_, __)` → Dart 3 와일드카드 규칙상 `(_, _)` 권장 → 수정
 
 ### 📦 커밋 내역
 - `feat: 티켓 접수 폼·회원가입·역할 기반 UI 분기 구현 (5주차)` (0023252)
 - `feat: 설정·리포트 완전 구현, 대시보드 실데이터 연동, 역할 기반 UI (5주차)` (90ed35e)
 - `feat: 담당자 배정·알림·자산 관리 화면 구현 (6주차)` (c85e47d)
+- `feat: 알림 전역 Provider 도입·TopBar 배지·화면 Provider 연동 (6주차 마무리)` (미커밋)
 
 ### 🔗 연관 파일 목록 (신규/수정)
 **5주차**
@@ -113,11 +203,12 @@
 **6주차**
 - `lib/views/users/user_mock_data.dart` (신규)
 - `lib/views/tickets/ticket_mock_data.dart` (agentId·agentName)
-- `lib/views/notifications/notifications_screen.dart` (신규)
+- `lib/views/notifications/notifications_screen.dart` (신규 → Provider 연동 수정)
+- `lib/features/notifications/notifications_provider.dart` (신규)
 - `lib/views/assets/assets_screen.dart` (신규)
 - `lib/views/layout/sidebar_widget.dart` (역할별 동적 항목)
 - `lib/views/layout/main_layout.dart` (알림 탭 추가)
-- `lib/views/layout/top_bar_widget.dart` (알림 아이콘 버튼)
+- `lib/views/layout/top_bar_widget.dart` (알림 배지 + unreadCountProvider)
 
 ---
 ## 📅 2026-03-25

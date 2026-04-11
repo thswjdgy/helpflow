@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/constants/app_strings.dart';
 import '../../features/auth/auth_provider.dart';
+import '../../features/notifications/notifications_provider.dart';
 import '../../providers/theme_provider.dart';
 
 /// 앱 상단 탑바 위젯
@@ -103,11 +104,15 @@ class TopBarWidget extends ConsumerWidget implements PreferredSizeWidget {
             ),
           ),
 
-        // 알림 버튼 (안읽음 뱃지 포함)
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined),
-          tooltip: '알림',
-          onPressed: () => context.go('/notifications'),
+        // 알림 버튼 — 안읽음 개수를 Badge로 표시
+        Badge(
+          isLabelVisible: ref.watch(unreadCountProvider) > 0,
+          label: Text('${ref.watch(unreadCountProvider)}'),
+          child: IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            tooltip: '알림',
+            onPressed: () => context.go('/notifications'),
+          ),
         ),
 
         // 다크모드 토글 버튼

@@ -47,6 +47,33 @@ class MockTicket {
     this.agentId,
     this.agentName,
   });
+
+  /// 일부 필드만 바꾼 복사본 반환 (Provider에서 불변 업데이트에 사용)
+  MockTicket copyWith({
+    String? id,
+    String? title,
+    String? description,
+    String? status,
+    String? priority,
+    String? category,
+    String? reporterEmail,
+    DateTime? createdAt,
+    String? agentId,
+    String? agentName,
+  }) {
+    return MockTicket(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      status: status ?? this.status,
+      priority: priority ?? this.priority,
+      category: category ?? this.category,
+      reporterEmail: reporterEmail ?? this.reporterEmail,
+      createdAt: createdAt ?? this.createdAt,
+      agentId: agentId ?? this.agentId,
+      agentName: agentName ?? this.agentName,
+    );
+  }
 }
 
 /// 목업 티켓 목록 (12건)

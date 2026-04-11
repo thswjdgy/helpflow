@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/design_system.dart';
 import '../../core/utils/validators.dart';
 import '../../features/auth/auth_provider.dart';
+import '../../features/tickets/tickets_provider.dart';
 
 // ── 티켓 접수 폼 화면 ────────────────────────────────────────
 /// 새 티켓 접수 폼 화면
@@ -35,9 +36,18 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
     super.dispose();
   }
 
-  /// 폼 제출 핸들러 — 유효성 통과 시 SnackBar 후 목록으로 이동
+  /// 폼 제출 핸들러 — 유효성 통과 시 ticketsProvider에 티켓 추가 후 목록으로 이동
   void _onSubmit() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    // ticketsProvider를 통해 실제로 티켓 추가 (알림도 자동 생성됨)
+    ref.read(ticketsProvider.notifier).addTicket(
+          title: _titleCtrl.text.trim(),
+          description: _contentCtrl.text.trim(),
+          category: _category,
+          priority: _priority,
+          reporterEmail: ref.read(authProvider).valueOrNull?.email ?? '',
+        );
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -255,5 +265,5 @@ class _DropdownField<T> extends StatelessWidget {
 // TicketFormScreen: ConsumerStatefulWidget — authProvider에서 이메일 읽기, 폼 키 관리
 // _FormBody: 4개 입력 필드(제목/내용/카테고리/우선순위) + AppValidators 검증 + 제출 버튼
 // _DropdownField: 카테고리·우선순위 드롭다운 공통 래퍼
-// 제출 성공 시 SnackBar 피드백 후 /tickets로 이동합니다.
-// Firestore 연동 시 _onSubmit에서 ticketProvider.create() 호출로 교체합니다.
+// 제출 성공 시 ticketsProvider.addTicket() 호출 → SnackBar 피드백 → /tickets 이동
+// addTicket()은 내부적으로 notificationsProvider에 새 알림도 자동 추가합니다.

@@ -1,16 +1,21 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/design_system.dart';
+import '../../features/tickets/tickets_provider.dart';
 import '../tickets/ticket_mock_data.dart';
 
 /// 리포트 화면
-/// kMockTickets를 집계하여 요약 카드·상태 분포·카테고리 분포·우선순위 분포를 표시합니다.
-/// fl_chart 연동 시 LinearProgressIndicator → 차트로 교체합니다.
-class ReportsScreen extends StatelessWidget {
+/// ticketsProvider를 구독하여 요약 카드·파이 차트·분포 섹션을 표시합니다.
+class ReportsScreen extends ConsumerWidget {
   const ReportsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // ticketsProvider 구독 — 새 티켓 접수 시 통계 자동 갱신
+    final tickets = ref.watch(ticketsProvider);
+
     return Scaffold(
       backgroundColor: HelpFlowColors.background,
       body: SingleChildScrollView(
@@ -19,27 +24,24 @@ class ReportsScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 요약 카드 4개 (전체·처리중·완료·새 티켓)
-            _SummaryCards(),
+            _SummaryCards(tickets: tickets),
             const SizedBox(height: HelpFlowSpacing.xxl),
 
-            // 상태별 분포
-            _DistributionSection(
-              title: '상태별 분포',
-              items: _statusItems(),
-            ),
+            // 상태별 파이 차트 (fl_chart)
+            _StatusPieChart(tickets: tickets),
             const SizedBox(height: HelpFlowSpacing.xxl),
 
-            // 카테고리별 분포
+            // 카테고리별 분포 바
             _DistributionSection(
               title: '카테고리별 분포',
-              items: _categoryItems(),
+              items: _categoryItems(tickets),
             ),
             const SizedBox(height: HelpFlowSpacing.xxl),
 
-            // 우선순위별 분포
+            // 우선순위별 분포 바
             _DistributionSection(
               title: '우선순위별 분포',
-              items: _priorityItems(),
+              items: _priorityItems(tickets),
             ),
           ],
         ),
@@ -47,37 +49,14 @@ class ReportsScreen extends StatelessWidget {
     );
   }
 
-  /// 상태별 건수 항목 생성
-  static List<_DistItem> _statusItems() {
-    final total = kMockTickets.length;
-    final counts = {
-      '새 티켓': kMockTickets.where((t) => t.status == 'new').length,
-      '처리중': kMockTickets.where((t) => t.status == 'in_progress').length,
-      '완료': kMockTickets.where((t) => t.status == 'resolved').length,
-      '종료': kMockTickets.where((t) => t.status == 'closed').length,
-    };
-    final colors = {
-      '새 티켓': AppColors.statusNew,
-      '처리중': AppColors.statusInProgress,
-      '완료': AppColors.statusDone,
-      '종료': AppColors.statusOnHold,
-    };
-    return counts.entries.map((e) => _DistItem(
-          label: e.key,
-          count: e.value,
-          ratio: total == 0 ? 0 : e.value / total,
-          color: colors[e.key] ?? AppColors.info,
-        )).toList();
-  }
-
   /// 카테고리별 건수 항목 생성
-  static List<_DistItem> _categoryItems() {
-    final total = kMockTickets.length;
+  static List<_DistItem> _categoryItems(List<MockTicket> tickets) {
+    final total = tickets.length;
     final counts = {
-      '하드웨어': kMockTickets.where((t) => t.category == 'hardware').length,
-      '소프트웨어': kMockTickets.where((t) => t.category == 'software').length,
-      '네트워크': kMockTickets.where((t) => t.category == 'network').length,
-      '기타': kMockTickets.where((t) => t.category == 'etc').length,
+      '하드웨어': tickets.where((t) => t.category == 'hardware').length,
+      '소프트웨어': tickets.where((t) => t.category == 'software').length,
+      '네트워크': tickets.where((t) => t.category == 'network').length,
+      '기타': tickets.where((t) => t.category == 'etc').length,
     };
     return counts.entries.map((e) => _DistItem(
           label: e.key,
@@ -88,8 +67,8 @@ class ReportsScreen extends StatelessWidget {
   }
 
   /// 우선순위별 건수 항목 생성
-  static List<_DistItem> _priorityItems() {
-    final total = kMockTickets.length;
+  static List<_DistItem> _priorityItems(List<MockTicket> tickets) {
+    final total = tickets.length;
     final data = [
       ('긴급', 'critical', AppColors.error),
       ('높음', 'high', AppColors.warning),
@@ -97,7 +76,7 @@ class ReportsScreen extends StatelessWidget {
       ('낮음', 'low', AppColors.success),
     ];
     return data.map((e) {
-      final count = kMockTickets.where((t) => t.priority == e.$2).length;
+      final count = tickets.where((t) => t.priority == e.$2).length;
       return _DistItem(
         label: e.$1,
         count: count,
@@ -108,25 +87,134 @@ class ReportsScreen extends StatelessWidget {
   }
 }
 
-// ── 요약 카드 섹션 ─────────────────────────────────────────────
-/// 전체·처리중·완료·새 티켓 건수를 카드로 표시하는 섹션
-class _SummaryCards extends StatelessWidget {
-  // kMockTickets 집계 상수
-  static int get _total => kMockTickets.length;
-  static int get _inProgress =>
-      kMockTickets.where((t) => t.status == 'in_progress').length;
-  static int get _resolved =>
-      kMockTickets.where((t) => t.status == 'resolved').length;
-  static int get _newCount =>
-      kMockTickets.where((t) => t.status == 'new').length;
+// ── 상태별 파이 차트 ──────────────────────────────────────────
+/// fl_chart PieChart로 상태별 티켓 수를 시각화
+class _StatusPieChart extends StatelessWidget {
+  final List<MockTicket> tickets;
+
+  const _StatusPieChart({required this.tickets});
 
   @override
   Widget build(BuildContext context) {
+    if (tickets.isEmpty) return const SizedBox.shrink();
+
+    final total = tickets.length;
+    final data = [
+      ('새 티켓', 'new', AppColors.statusNew),
+      ('처리중', 'in_progress', AppColors.statusInProgress),
+      ('완료', 'resolved', AppColors.statusDone),
+      ('종료', 'closed', AppColors.statusOnHold),
+    ];
+
+    final sections = data
+        .map((e) => (
+              label: e.$1,
+              count: tickets.where((t) => t.status == e.$2).length,
+              color: e.$3,
+            ))
+        .where((e) => e.count > 0)
+        .map((e) => PieChartSectionData(
+              value: e.count.toDouble(),
+              color: e.color,
+              title: '${(e.count / total * 100).round()}%',
+              radius: 60,
+              titleStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ))
+        .toList();
+
+    final legends = data
+        .map((e) => (
+              label: e.$1,
+              count: tickets.where((t) => t.status == e.$2).length,
+              color: e.$3,
+            ))
+        .toList();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(HelpFlowSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('상태별 분포', style: HelpFlowTextStyles.headline3),
+            const SizedBox(height: HelpFlowSpacing.md),
+            Row(
+              children: [
+                // 파이 차트
+                SizedBox(
+                  height: 160,
+                  width: 160,
+                  child: PieChart(
+                    PieChartData(
+                      sections: sections,
+                      centerSpaceRadius: 32,
+                      sectionsSpace: 2,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: HelpFlowSpacing.lg),
+                // 범례
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: legends
+                        .map((e) => Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: e.color,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${e.label}  ${e.count}건',
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── 요약 카드 섹션 ─────────────────────────────────────────────
+/// 전체·처리중·완료·새 티켓 건수를 카드로 표시하는 섹션
+class _SummaryCards extends StatelessWidget {
+  final List<MockTicket> tickets;
+
+  const _SummaryCards({required this.tickets});
+
+  @override
+  Widget build(BuildContext context) {
+    // ticketsProvider 집계값
+    final total = tickets.length;
+    final inProgress = tickets.where((t) => t.status == 'in_progress').length;
+    final resolved = tickets.where((t) => t.status == 'resolved').length;
+    final newCount = tickets.where((t) => t.status == 'new').length;
+
     final cards = [
-      _CardData('총 티켓', _total, Icons.confirmation_number_outlined, AppColors.info),
-      _CardData('처리중', _inProgress, Icons.pending_outlined, AppColors.warning),
-      _CardData('완료', _resolved, Icons.check_circle_outlined, AppColors.success),
-      _CardData('새 티켓', _newCount, Icons.fiber_new_outlined, AppColors.statusNew),
+      _CardData('총 티켓', total, Icons.confirmation_number_outlined, AppColors.info),
+      _CardData('처리중', inProgress, Icons.pending_outlined, AppColors.warning),
+      _CardData('완료', resolved, Icons.check_circle_outlined, AppColors.success),
+      _CardData('새 티켓', newCount, Icons.fiber_new_outlined, AppColors.statusNew),
     ];
 
     // Wrap: 화면 너비에 따라 2열 또는 4열로 자동 배치
@@ -267,7 +355,7 @@ class _DistRow extends StatelessWidget {
 
 // [파일 요약]
 // 리포트 화면입니다.
-// ReportsScreen: kMockTickets를 집계하여 4개 섹션 표시
-// _SummaryCards: 총 티켓·처리중·완료·새 티켓 요약 카드 (Wrap 반응형)
-// _DistributionSection: 상태·카테고리·우선순위별 LinearProgressIndicator 분포 바
-// fl_chart 연동 시 _DistRow의 LinearProgressIndicator를 차트로 교체합니다.
+// ReportsScreen      : ConsumerWidget — ticketsProvider 구독, 새 티켓 접수 시 자동 갱신
+// _SummaryCards      : 총 티켓·처리중·완료·새 티켓 요약 카드 (Wrap 반응형)
+// _StatusPieChart    : fl_chart PieChart — 상태별 분포 시각화
+// _DistributionSection: 카테고리·우선순위별 LinearProgressIndicator 분포 바

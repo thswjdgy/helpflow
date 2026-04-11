@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/design_system.dart';
+import '../../features/notifications/notifications_provider.dart';
 
 // ── 목업 알림 데이터 ──────────────────────────────────────────
 /// 알림 타입 enum
@@ -130,63 +132,44 @@ final List<MockNotification> kMockNotifications = [
 
 // ── 알림 화면 ─────────────────────────────────────────────────
 /// 알림 목록 화면
+/// notificationsProvider를 구독하여 읽음 상태를 전역으로 관리합니다.
 /// 타입별 아이콘, 읽음/안읽음 구분, 탭 시 해당 티켓 상세로 이동합니다.
-class NotificationsScreen extends StatefulWidget {
+class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
   @override
-  State<NotificationsScreen> createState() => _NotificationsScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    /// 전역 알림 목록 구독
+    final notifications = ref.watch(notificationsProvider);
 
-class _NotificationsScreenState extends State<NotificationsScreen> {
-  /// 로컬 알림 목록 (읽음 상태 변경 관리)
-  late List<MockNotification> _notifications;
+    /// 안읽음 개수 구독 (파생 Provider)
+    final unreadCount = ref.watch(unreadCountProvider);
 
-  @override
-  void initState() {
-    super.initState();
-    // 목업 데이터를 로컬 복사본으로 관리
-    _notifications = List.from(kMockNotifications);
-  }
+    /// 모두 읽음 처리 — notificationsProvider.notifier에 위임
+    void markAllRead() {
+      ref.read(notificationsProvider.notifier).markAllRead();
+    }
 
-  /// 모두 읽음 처리
-  void _markAllRead() {
-    setState(() {
-      _notifications = _notifications
-          .map((n) => n.copyWith(isRead: true))
-          .toList();
-    });
-  }
+    /// 개별 알림 탭 — 읽음 처리 후 해당 티켓 상세로 이동
+    void onTap(MockNotification noti) {
+      ref.read(notificationsProvider.notifier).markRead(noti.id);
+      context.go('/tickets/${noti.ticketId}');
+    }
 
-  /// 개별 알림 탭 — 읽음 처리 후 해당 티켓 상세로 이동
-  void _onTap(MockNotification noti) {
-    setState(() {
-      final idx = _notifications.indexWhere((n) => n.id == noti.id);
-      if (idx != -1) {
-        _notifications[idx] = noti.copyWith(isRead: true);
-      }
-    });
-    context.go('/tickets/${noti.ticketId}');
-  }
-
-  int get _unreadCount => _notifications.where((n) => !n.isRead).length;
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: HelpFlowColors.background,
       body: Column(
         children: [
           // 상단 요약 바 (안읽음 건수 + 모두읽음 버튼)
           _NotificationHeader(
-            unreadCount: _unreadCount,
-            onMarkAllRead: _unreadCount > 0 ? _markAllRead : null,
+            unreadCount: unreadCount,
+            onMarkAllRead: unreadCount > 0 ? markAllRead : null,
           ),
           const Divider(height: 1),
 
           // 알림 목록
           Expanded(
-            child: _notifications.isEmpty
+            child: notifications.isEmpty
                 ? Center(
                     child: Text(
                       '알림이 없습니다',
@@ -196,12 +179,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   )
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(vertical: 4),
-                    itemCount: _notifications.length,
+                    itemCount: notifications.length,
                     separatorBuilder: (_, _) =>
                         const Divider(height: 1, indent: 16, endIndent: 16),
                     itemBuilder: (context, i) => _NotificationTile(
-                      notification: _notifications[i],
-                      onTap: () => _onTap(_notifications[i]),
+                      notification: notifications[i],
+                      onTap: () => onTap(notifications[i]),
                     ),
                   ),
           ),

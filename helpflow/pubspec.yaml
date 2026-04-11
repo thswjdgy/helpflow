@@ -26,8 +26,8 @@ dependencies:
   # 라우팅
   go_router: ^14.2.7
 
-  # 차트 (7~8주차 활성화 예정)
-  # fl_chart: ^0.68.0
+  # 차트 (7주차~)
+  fl_chart: ^0.68.0
 
   # Material Symbols 아이콘
   material_symbols_icons: ^4.2719.1
