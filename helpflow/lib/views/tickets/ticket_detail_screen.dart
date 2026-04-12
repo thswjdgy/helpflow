@@ -119,8 +119,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
     // 티켓을 찾지 못한 경우
     if (ticket == null) {
       return Scaffold(
-        backgroundColor: HelpFlowColors.background,
-        body: Center(
+          body: Center(
           child: Text(
             '티켓을 찾을 수 없습니다 (ID: ${widget.ticketId})',
             style: HelpFlowTextStyles.body1.copyWith(color: HelpFlowColors.gray400),
@@ -136,7 +135,6 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
     final next = isReadOnly ? null : _nextStatus(ticket.status);
 
     return Scaffold(
-      backgroundColor: HelpFlowColors.background,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(HelpFlowSpacing.lg),
         child: Column(
@@ -201,7 +199,7 @@ class _TicketInfoSection extends StatelessWidget {
             Text(
               ticket.description,
               style: HelpFlowTextStyles.body2
-                  .copyWith(color: HelpFlowColors.gray700),
+                  .copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: HelpFlowSpacing.lg),
             const Divider(height: 1),
@@ -411,8 +409,15 @@ class _NoteSection extends StatelessWidget {
                     const TextStyle(color: HelpFlowColors.gray400, fontSize: 14),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide:
-                      const BorderSide(color: HelpFlowColors.gray100),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
                 ),
               ),
             ),
@@ -492,7 +497,15 @@ class _AgentAssignSectionState extends ConsumerState<_AgentAssignSection> {
               decoration: InputDecoration(
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: HelpFlowColors.gray100),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: HelpFlowSpacing.md,

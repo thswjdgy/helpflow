@@ -13,7 +13,6 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      backgroundColor: HelpFlowColors.background,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(HelpFlowSpacing.lg),
         child: Column(

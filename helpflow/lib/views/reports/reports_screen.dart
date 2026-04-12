@@ -17,7 +17,6 @@ class ReportsScreen extends ConsumerWidget {
     final tickets = ref.watch(ticketsProvider);
 
     return Scaffold(
-      backgroundColor: HelpFlowColors.background,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(HelpFlowSpacing.lg),
         child: Column(

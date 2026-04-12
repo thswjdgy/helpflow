@@ -157,7 +157,6 @@ class NotificationsScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: HelpFlowColors.background,
       body: Column(
         children: [
           // 상단 요약 바 (안읽음 건수 + 모두읽음 버튼)

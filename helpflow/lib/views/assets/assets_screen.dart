@@ -136,7 +136,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: HelpFlowColors.background,
       body: Column(
         children: [
           // 타입 필터 칩 영역

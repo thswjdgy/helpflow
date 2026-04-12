@@ -66,7 +66,6 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
         ref.watch(authProvider).valueOrNull?.email ?? '';
 
     return Scaffold(
-      backgroundColor: HelpFlowColors.background,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(HelpFlowSpacing.lg),
         child: _FormBody(
@@ -150,7 +149,7 @@ class _FormBody extends StatelessWidget {
           const SizedBox(height: HelpFlowSpacing.sm),
           TextFormField(
             controller: titleCtrl,
-            decoration: _inputDecoration('티켓 제목을 입력하세요'),
+            decoration: _FormBody.inputDecoration(context, '티켓 제목을 입력하세요'),
             validator: (v) => AppValidators.required(v, fieldName: '제목'),
           ),
 
@@ -162,7 +161,7 @@ class _FormBody extends StatelessWidget {
           TextFormField(
             controller: contentCtrl,
             maxLines: 5,
-            decoration: _inputDecoration('문제 상황을 자세히 설명해주세요'),
+            decoration: _FormBody.inputDecoration(context, '문제 상황을 자세히 설명해주세요'),
             validator: AppValidators.compose([
               (v) => AppValidators.required(v, fieldName: '내용'),
               AppValidators.minLength(10, fieldName: '내용'),
@@ -214,14 +213,19 @@ class _FormBody extends StatelessWidget {
     );
   }
 
-  /// 공통 입력 필드 데코레이션
-  InputDecoration _inputDecoration(String hint) {
+  /// 공통 입력 필드 데코레이션 (테마 outlineVariant 색상 사용 — 다크모드 자동 대응)
+  static InputDecoration inputDecoration(BuildContext context, String hint) {
+    final outline = Theme.of(context).colorScheme.outlineVariant;
     return InputDecoration(
       hintText: hint,
       hintStyle: const TextStyle(color: HelpFlowColors.gray400, fontSize: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: HelpFlowColors.gray100),
+        borderSide: BorderSide(color: outline),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: outline),
       ),
     );
   }
@@ -242,6 +246,7 @@ class _DropdownField<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final outline = Theme.of(context).colorScheme.outlineVariant;
     return DropdownButtonFormField<T>(
       initialValue: value,
       items: items,
@@ -249,7 +254,11 @@ class _DropdownField<T> extends StatelessWidget {
       decoration: InputDecoration(
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: HelpFlowColors.gray100),
+          borderSide: BorderSide(color: outline),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: outline),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: HelpFlowSpacing.md,

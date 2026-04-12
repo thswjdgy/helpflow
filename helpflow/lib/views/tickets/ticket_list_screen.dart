@@ -104,7 +104,6 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
     final tickets = _filterTickets(allTickets, authUser?.role, authUser?.email);
 
     return Scaffold(
-      backgroundColor: HelpFlowColors.background,
       body: Column(
         children: [
           // 검색창
@@ -174,7 +173,15 @@ class _SearchBar extends StatelessWidget {
           isDense: true,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: HelpFlowColors.gray100),
+            borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
           ),
           contentPadding: const EdgeInsets.symmetric(vertical: 10),
         ),
