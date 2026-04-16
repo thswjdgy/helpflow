@@ -30,6 +30,10 @@ class ReportsScreen extends ConsumerWidget {
             _StatusPieChart(tickets: tickets),
             const SizedBox(height: HelpFlowSpacing.xxl),
 
+            // 주간 접수 추이 바 차트 (fl_chart)
+            _WeeklyBarChart(tickets: tickets),
+            const SizedBox(height: HelpFlowSpacing.xxl),
+
             // 카테고리별 분포 바
             _DistributionSection(
               title: '카테고리별 분포',
@@ -352,9 +356,133 @@ class _DistRow extends StatelessWidget {
   }
 }
 
+// ── 주간 접수 추이 바 차트 ────────────────────────────────────
+/// 오늘 기준 최근 7일간 날짜별 티켓 접수 건수를 fl_chart BarChart로 표시
+class _WeeklyBarChart extends StatelessWidget {
+  final List<MockTicket> tickets;
+
+  const _WeeklyBarChart({required this.tickets});
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // 최근 7일 날짜별 접수 건수 집계 (인덱스 0 = 6일 전, 6 = 오늘)
+    final counts = List.generate(7, (i) {
+      final day = today.subtract(Duration(days: 6 - i));
+      return tickets.where((t) {
+        final d = DateTime(t.createdAt.year, t.createdAt.month, t.createdAt.day);
+        return d == day;
+      }).length;
+    });
+
+    // 요일 레이블 (월~일)
+    const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+    final dayLabels = List.generate(7, (i) {
+      final day = today.subtract(Duration(days: 6 - i));
+      return weekdays[day.weekday - 1];
+    });
+
+    // Y축 최댓값 — 0건이면 최소 4로 설정
+    final maxCount = counts.reduce((a, b) => a > b ? a : b);
+    final maxY = (maxCount == 0 ? 4 : maxCount).toDouble() + 1;
+
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+            HelpFlowSpacing.lg, HelpFlowSpacing.lg,
+            HelpFlowSpacing.lg, HelpFlowSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('주간 접수 추이', style: HelpFlowTextStyles.headline3),
+            const SizedBox(height: HelpFlowSpacing.md),
+            SizedBox(
+              height: 160,
+              child: BarChart(
+                BarChartData(
+                  maxY: maxY,
+                  barGroups: List.generate(
+                    7,
+                    (i) => BarChartGroupData(
+                      x: i,
+                      barRods: [
+                        BarChartRodData(
+                          toY: counts[i].toDouble(),
+                          color: primaryColor,
+                          width: 20,
+                          borderRadius: BorderRadius.circular(4),
+                          backDrawRodData: BackgroundBarChartRodData(
+                            show: true,
+                            toY: maxY,
+                            color: primaryColor.withAlpha(20),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  titlesData: FlTitlesData(
+                    topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 24,
+                        getTitlesWidget: (value, _) => Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            dayLabels[value.toInt()],
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        ),
+                      ),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 24,
+                        interval: 1,
+                        getTitlesWidget: (value, _) {
+                          if (value != value.truncateToDouble()) {
+                            return const SizedBox.shrink();
+                          }
+                          return Text(
+                            '${value.toInt()}',
+                            style: const TextStyle(fontSize: 11),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: 1,
+                    getDrawingHorizontalLine: (_) => FlLine(
+                      color: Colors.grey.withAlpha(40),
+                      strokeWidth: 1,
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // [파일 요약]
 // 리포트 화면입니다.
 // ReportsScreen      : ConsumerWidget — ticketsProvider 구독, 새 티켓 접수 시 자동 갱신
 // _SummaryCards      : 총 티켓·처리중·완료·새 티켓 요약 카드 (Wrap 반응형)
 // _StatusPieChart    : fl_chart PieChart — 상태별 분포 시각화
+// _WeeklyBarChart    : fl_chart BarChart — 최근 7일 날짜별 접수 건수 (요일 레이블)
 // _DistributionSection: 카테고리·우선순위별 LinearProgressIndicator 분포 바

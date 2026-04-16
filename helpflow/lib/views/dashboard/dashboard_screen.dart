@@ -35,6 +35,11 @@ class DashboardScreen extends ConsumerWidget {
 
           const SizedBox(height: AppSizes.spacingLg),
 
+          // ── 주간 접수 추이 바 차트 (fl_chart) ─────────────────
+          _WeeklyBarChart(tickets: tickets),
+
+          const SizedBox(height: AppSizes.spacingLg),
+
           // ── 최근 티켓 목록 ────────────────────────────────────
           _RecentTicketsSection(tickets: tickets),
         ],
@@ -320,6 +325,138 @@ class _StatusPieChart extends StatelessWidget {
   }
 }
 
+// ── 주간 접수 추이 바 차트 ────────────────────────────────────
+/// 오늘 기준 최근 7일간 날짜별 티켓 접수 건수를 fl_chart BarChart로 표시
+class _WeeklyBarChart extends StatelessWidget {
+  final List<MockTicket> tickets;
+
+  const _WeeklyBarChart({required this.tickets});
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // 최근 7일 날짜별 접수 건수 집계 (인덱스 0 = 6일 전, 6 = 오늘)
+    final counts = List.generate(7, (i) {
+      final day = today.subtract(Duration(days: 6 - i));
+      return tickets.where((t) {
+        final d = DateTime(t.createdAt.year, t.createdAt.month, t.createdAt.day);
+        return d == day;
+      }).length;
+    });
+
+    // 요일 레이블 (월~일)
+    const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+    final dayLabels = List.generate(7, (i) {
+      final day = today.subtract(Duration(days: 6 - i));
+      return weekdays[day.weekday - 1];
+    });
+
+    // Y축 최댓값 — 0건이면 최소 5로 설정
+    final maxCount = counts.reduce((a, b) => a > b ? a : b);
+    final maxY = (maxCount == 0 ? 4 : maxCount).toDouble() + 1;
+
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '주간 접수 추이',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+        const SizedBox(height: AppSizes.spacingMd),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSizes.spacingMd, AppSizes.spacingMd,
+                AppSizes.spacingMd, AppSizes.spacingSm),
+            child: SizedBox(
+              height: 160,
+              child: BarChart(
+                BarChartData(
+                  maxY: maxY,
+                  barGroups: List.generate(
+                    7,
+                    (i) => BarChartGroupData(
+                      x: i,
+                      barRods: [
+                        BarChartRodData(
+                          toY: counts[i].toDouble(),
+                          color: primaryColor,
+                          width: 20,
+                          borderRadius: BorderRadius.circular(4),
+                          // 막대 배경 (전체 높이)
+                          backDrawRodData: BackgroundBarChartRodData(
+                            show: true,
+                            toY: maxY,
+                            color: primaryColor.withAlpha(20),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  titlesData: FlTitlesData(
+                    // 상단·우측 레이블 숨김
+                    topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    // 하단 요일 레이블
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 24,
+                        getTitlesWidget: (value, _) => Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            dayLabels[value.toInt()],
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // 좌측 정수 건수 레이블
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 24,
+                        interval: 1,
+                        getTitlesWidget: (value, _) {
+                          if (value != value.truncateToDouble()) {
+                            return const SizedBox.shrink();
+                          }
+                          return Text(
+                            '${value.toInt()}',
+                            style: const TextStyle(fontSize: 11),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: 1,
+                    getDrawingHorizontalLine: (_) => FlLine(
+                      color: Colors.grey.withAlpha(40),
+                      strokeWidth: 1,
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 // ── 최근 티켓 목록 ────────────────────────────────────────────
 /// ticketsProvider 목록을 최신순으로 정렬하여 상위 4건을 표시하는 섹션
 class _RecentTicketsSection extends StatelessWidget {
@@ -495,7 +632,8 @@ class _Badge extends StatelessWidget {
 
 // [파일 요약]
 // 대시보드 화면입니다.
-// _StatCardsSection: kMockTickets 집계값(총/처리중/완료/미처리)으로 통계 카드 표시
-// _ChartPlaceholder: 7~8주차 fl_chart 연동 전 플레이스홀더
-// _RecentTicketsSection: kMockTickets 최신 4건 표시, "전체 보기" → /tickets 이동
-// Firestore 연동 시 kMockTickets → ticketProvider로 교체합니다.
+// _StatCardsSection  : ticketsProvider 집계값(총/처리중/완료/미처리) 통계 카드 4개 (Wrap 반응형)
+// _StatusPieChart    : fl_chart 도넛 PieChart — 상태별 분포 + 범례
+// _WeeklyBarChart    : fl_chart BarChart — 최근 7일 날짜별 접수 건수 (요일 레이블)
+// _RecentTicketsSection : ticketsProvider 최신 4건, "전체 보기" → /tickets 이동
+// Firestore 연동 시 ticketsProvider를 StreamProvider로 교체합니다.

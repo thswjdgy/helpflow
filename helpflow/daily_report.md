@@ -1,4 +1,51 @@
 ---
+## 📅 2026-04-16
+
+### ✅ 완료한 작업
+
+**[8주차 — 처리 메모 Provider 연동·fl_chart BarChart·데모 계정 프리셋]**
+
+**[작업 1] MockNote 모델 + notes_provider.dart 신규 (`lib/features/notes/`)**
+- `MockNote`: id·ticketId·content·authorEmail·createdAt 필드를 가진 순수 Dart 모델
+- `NotesNotifier extends Notifier<Map(ticketId → List)>`: `addNote()` 메서드 제공
+- `notesProvider`: 앱 전역 처리 메모 NotifierProvider
+- `notesForTicketProvider`: 특정 티켓 메모 목록만 구독하는 family Provider
+
+**[작업 2] ticket_detail_screen.dart 수정 — 처리 메모 실저장 + 이력 표시**
+- `_onNoteSubmit()`: SnackBar 전용 → `ref.read(notesProvider.notifier).addNote()` 실제 저장
+- `_NoteHistorySection` (ConsumerWidget) 신규: `notesForTicketProvider` 구독, 저장 즉시 자동 갱신
+- `_NoteItem` 신규: 작성자 이메일·작성 시각(YYYY.MM.DD HH:mm)·내용 표시
+- 메모 없을 때 섹션 전체 숨김 (`SizedBox.shrink()`)
+
+**[작업 3] dashboard_screen.dart 수정 — 주간 접수 추이 BarChart 추가**
+- `_WeeklyBarChart` 신규: 오늘 기준 최근 7일 날짜별 접수 건수 집계 + 요일 레이블
+- fl_chart `BarChart` — 막대 배경(withAlpha 20) + 수평 그리드 + 좌측 정수 Y축
+- `_StatusPieChart`와 `_RecentTicketsSection` 사이에 삽입
+
+**[작업 4] reports_screen.dart 수정 — 주간 접수 추이 BarChart 추가**
+- `_WeeklyBarChart` 신규 (dashboard와 동일 로직, 카드 형태로 래핑)
+- `_StatusPieChart` 아래 + 카테고리 분포 위에 삽입
+
+**[작업 5] settings_screen.dart 수정 — 데모 계정 프리셋 섹션 추가**
+- `_DemoAccountSection` (ConsumerWidget) 신규: 관리자·에이전트·사용자 역할 프리셋 버튼 3개
+- 각 버튼 탭 시 `authProvider.register(email, password, role)` 호출 → Hive 저장 + 자동 로그인
+- 현재 역할과 동일한 버튼은 비활성(disabled) 표시
+- `_DemoPreset` 데이터 모델: role·email·label·color·icon
+
+### 🐛 발생한 오류 & 해결 방법
+- 없음 (flutter analyze lib/ 오류 0건)
+
+### 📦 커밋 내역
+- `feat: 처리 메모 Provider 연동·주간 BarChart·데모 계정 프리셋 구현 (8주차)` (9ad4f77)
+
+### 🔗 연관 파일 목록 (신규/수정)
+- `lib/features/notes/notes_provider.dart` (신규)
+- `lib/views/tickets/ticket_detail_screen.dart` (메모 실저장 + 이력 섹션)
+- `lib/views/dashboard/dashboard_screen.dart` (주간 BarChart 추가)
+- `lib/views/reports/reports_screen.dart` (주간 BarChart 추가)
+- `lib/views/settings/settings_screen.dart` (데모 계정 프리셋 섹션)
+
+---
 ## 📅 2026-04-11
 
 ### ✅ 완료한 작업

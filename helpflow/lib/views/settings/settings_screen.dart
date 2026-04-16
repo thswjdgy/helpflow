@@ -24,6 +24,10 @@ class SettingsScreen extends ConsumerWidget {
 
             // 계정 정보 + 로그아웃 섹션
             _AccountSection(),
+            const SizedBox(height: HelpFlowSpacing.xxl),
+
+            // 데모 계정 프리셋 섹션 (역할 빠른 전환)
+            _DemoAccountSection(),
           ],
         ),
       ),
@@ -176,9 +180,132 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
+// ── 데모 계정 프리셋 섹션 ─────────────────────────────────────
+/// 관리자·에이전트·사용자 역할로 즉시 전환할 수 있는 데모 계정 버튼 카드
+/// authProvider.register()를 호출하여 Hive에 역할을 저장하고 자동 로그인합니다.
+class _DemoAccountSection extends ConsumerWidget {
+  /// 데모 계정 프리셋 정의 (역할·이메일·레이블·색상)
+  static const _presets = [
+    _DemoPreset(
+      role: 'admin',
+      email: 'admin@helpflow.com',
+      label: '관리자',
+      color: AppColors.error,
+      icon: Icons.admin_panel_settings_outlined,
+    ),
+    _DemoPreset(
+      role: 'agent',
+      email: 'agent@helpflow.com',
+      label: '에이전트',
+      color: AppColors.warning,
+      icon: Icons.support_agent_outlined,
+    ),
+    _DemoPreset(
+      role: 'user',
+      email: 'user@helpflow.com',
+      label: '사용자',
+      color: AppColors.info,
+      icon: Icons.person_outlined,
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 현재 로그인 역할 (버튼 활성/비활성 표시에 사용)
+    final currentRole = ref.watch(authProvider).valueOrNull?.role;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(HelpFlowSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('데모 계정', style: HelpFlowTextStyles.headline3),
+            const SizedBox(height: HelpFlowSpacing.sm),
+            Text(
+              '역할별 UI를 빠르게 확인할 수 있는 프리셋입니다.',
+              style: const TextStyle(
+                  fontSize: 12, color: HelpFlowColors.gray400),
+            ),
+            const SizedBox(height: HelpFlowSpacing.md),
+            const Divider(height: 1),
+            const SizedBox(height: HelpFlowSpacing.md),
+
+            // 역할 프리셋 버튼 목록
+            Column(
+              children: _presets.map((preset) {
+                final isActive = currentRole == preset.role;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: HelpFlowSpacing.sm),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      // 현재 역할과 동일하면 비활성
+                      onPressed: isActive
+                          ? null
+                          : () => ref
+                              .read(authProvider.notifier)
+                              .register(
+                                email: preset.email,
+                                password: 'demo1234',
+                                role: preset.role,
+                              ),
+                      icon: Icon(preset.icon,
+                          size: 18,
+                          color: isActive
+                              ? HelpFlowColors.gray400
+                              : preset.color),
+                      label: Text(
+                        isActive
+                            ? '${preset.label} (현재 역할)'
+                            : '${preset.label}로 전환',
+                        style: TextStyle(
+                          color: isActive
+                              ? HelpFlowColors.gray400
+                              : preset.color,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                          color: isActive
+                              ? HelpFlowColors.gray400.withAlpha(80)
+                              : preset.color,
+                        ),
+                        alignment: Alignment.centerLeft,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 데모 계정 프리셋 데이터 모델
+class _DemoPreset {
+  final String role;
+  final String email;
+  final String label;
+  final Color color;
+  final IconData icon;
+
+  const _DemoPreset({
+    required this.role,
+    required this.email,
+    required this.label,
+    required this.color,
+    required this.icon,
+  });
+}
+
 // [파일 요약]
 // 설정 화면입니다.
-// SettingsScreen: ConsumerWidget — 외관·계정 섹션 나열
-// _AppearanceSection: 다크모드 SwitchListTile (themeProvider 연동)
-// _AccountSection: 이메일·역할 표시 + 로그아웃 버튼 (authProvider 연동)
-// _InfoRow: 아이콘+레이블+값 한 줄 표시 재사용 위젯
+// SettingsScreen      : ConsumerWidget — 외관·계정·데모 섹션 나열
+// _AppearanceSection  : 다크모드 SwitchListTile (themeProvider 연동)
+// _AccountSection     : 이메일·역할 표시 + 로그아웃 버튼 (authProvider 연동)
+// _DemoAccountSection : 관리자·에이전트·사용자 역할 프리셋 버튼 (authProvider.register 호출)
+// _InfoRow            : 아이콘+레이블+값 한 줄 표시 재사용 위젯

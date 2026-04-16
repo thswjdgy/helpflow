@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/design_system.dart';
 import '../../features/auth/auth_provider.dart';
+import '../../features/notes/notes_provider.dart';
 import '../../features/tickets/tickets_provider.dart';
 import '../users/user_mock_data.dart';
 import 'ticket_mock_data.dart';
@@ -96,9 +97,22 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
     );
   }
 
-  /// 처리 메모 저장 핸들러 — SnackBar 피드백 (Firestore 연동 전)
+  /// 처리 메모 저장 핸들러 — notesProvider에 실제 저장 후 SnackBar 피드백
   void _onNoteSubmit() {
-    if (_noteCtrl.text.trim().isEmpty) return;
+    final content = _noteCtrl.text.trim();
+    if (content.isEmpty) return;
+
+    // 현재 로그인 이메일을 작성자로 설정
+    final authorEmail =
+        ref.read(authProvider).valueOrNull?.email ?? '';
+
+    // notesProvider에 메모 저장
+    ref.read(notesProvider.notifier).addNote(
+          ticketId: widget.ticketId,
+          content: content,
+          authorEmail: authorEmail,
+        );
+
     _noteCtrl.clear();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -162,11 +176,16 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
             const SizedBox(height: HelpFlowSpacing.xxl),
 
             // 처리 메모 입력 섹션 (USER는 숨김)
-            if (!isReadOnly)
+            if (!isReadOnly) ...[
               _NoteSection(
                 controller: _noteCtrl,
                 onSubmit: _onNoteSubmit,
               ),
+              const SizedBox(height: HelpFlowSpacing.xxl),
+
+              // 처리 이력 섹션 — 저장된 메모를 최신순으로 표시
+              _NoteHistorySection(ticketId: ticket.id),
+            ],
           ],
         ),
       ),
@@ -538,10 +557,100 @@ class _AgentAssignSectionState extends ConsumerState<_AgentAssignSection> {
   }
 }
 
+// ── 처리 메모 이력 섹션 ───────────────────────────────────────
+/// 저장된 처리 메모 목록을 최신순으로 표시하는 카드
+/// notesForTicketProvider를 구독하여 새 메모 저장 즉시 자동 갱신됩니다.
+class _NoteHistorySection extends ConsumerWidget {
+  final String ticketId;
+
+  const _NoteHistorySection({required this.ticketId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 특정 티켓의 메모 목록만 구독
+    final notes = ref.watch(notesForTicketProvider(ticketId));
+
+    // 메모가 없으면 섹션 자체를 숨김
+    if (notes.isEmpty) return const SizedBox.shrink();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(HelpFlowSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '처리 이력 (${notes.length}건)',
+              style: HelpFlowTextStyles.headline3,
+            ),
+            const SizedBox(height: HelpFlowSpacing.sm),
+            const Divider(height: 1),
+
+            // 메모 목록
+            ...notes.map((note) => _NoteItem(note: note)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── 처리 메모 아이템 ─────────────────────────────────────────
+/// 개별 처리 메모 아이템 (작성자·시각·내용)
+class _NoteItem extends StatelessWidget {
+  final MockNote note;
+
+  const _NoteItem({required this.note});
+
+  /// 날짜+시각을 "YYYY.MM.DD HH:mm" 형식으로 변환
+  static String _formatDateTime(DateTime dt) {
+    return '${dt.year}.${dt.month.toString().padLeft(2, '0')}.${dt.day.toString().padLeft(2, '0')} '
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: HelpFlowSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 작성자 + 작성 시각 행
+          Row(
+            children: [
+              const Icon(Icons.person_outline,
+                  size: 14, color: HelpFlowColors.gray400),
+              const SizedBox(width: 4),
+              Text(
+                note.authorEmail,
+                style: const TextStyle(
+                    fontSize: 12, color: HelpFlowColors.gray400),
+              ),
+              const Spacer(),
+              Text(
+                _formatDateTime(note.createdAt),
+                style: const TextStyle(
+                    fontSize: 11, color: HelpFlowColors.gray400),
+              ),
+            ],
+          ),
+          const SizedBox(height: HelpFlowSpacing.sm),
+
+          // 메모 내용
+          Text(note.content, style: const TextStyle(fontSize: 13)),
+          const Divider(height: HelpFlowSpacing.xl),
+        ],
+      ),
+    );
+  }
+}
+
 // [파일 요약]
 // 티켓 상세 화면입니다.
 // _TicketInfoSection   : 제목·설명·카테고리·접수자·담당자·접수일 표시 카드
 // _AgentAssignSection  : ADMIN 전용 ConsumerStatefulWidget — ticketsProvider.assignAgent() 실제 연동
 // _StatusSection       : 현재 상태 배지 + 다음 상태 변경 버튼 (USER는 읽기 전용)
-// _NoteSection         : AGENT·ADMIN 전용 처리 내용 입력 + 저장 버튼
+// _NoteSection         : AGENT·ADMIN 전용 처리 내용 입력 + 저장 버튼 (notesProvider에 실제 저장)
+// _NoteHistorySection  : 저장된 처리 메모 이력 목록 (notesForTicketProvider 구독, 자동 갱신)
+// _NoteItem            : 개별 메모 아이템 (작성자·시각·내용)
 // ticketsProvider 구독: 상태 변경·담당자 배정 시 화면이 자동으로 재빌드됩니다.
