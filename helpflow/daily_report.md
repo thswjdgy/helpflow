@@ -1,4 +1,67 @@
 ---
+## 📅 2026-04-18
+
+### ✅ 완료한 작업
+
+**[9주차 — 자산 Provider·상세 화면·등록 폼·QR 코드 생성]**
+
+**[작업 1] asset_mock_data.dart 신규 (`lib/views/assets/`)**
+- `MockAsset` 모델·`AssetType` enum·`assetTypeLabel()`·`kMockAssets`를 `assets_screen.dart`에서 분리
+- `copyWith()` 메서드 추가 (Provider 불변 업데이트용)
+- 기존 `assets_screen.dart`는 import 참조로 전환
+
+**[작업 2] assets_provider.dart 신규 (`lib/features/assets/`)**
+- `AssetsNotifier extends Notifier<List<MockAsset>>`: kMockAssets 초기값
+- `addAsset(name, type, location, serialNumber)`: ID 자동생성(AST-011…), 목록 맨 앞에 추가
+- `assetsProvider`: 앱 전역 자산 목록 NotifierProvider
+
+**[작업 3] assets_screen.dart 전면 재작성**
+- `StatefulWidget` → `ConsumerStatefulWidget` — `assetsProvider` 구독
+- `_AssetSearchBar` 신규: 이름·위치·시리얼 번호 검색 TextField
+- `_AssetCard`: `onTap` 추가 → `context.go('/assets/${asset.id}')` 이동
+- `FloatingActionButton`: SnackBar 플레이스홀더 → `context.go('/assets/new')` 이동
+
+**[작업 4] asset_detail_screen.dart 신규**
+- `AssetDetailScreen` (ConsumerWidget): `assetId`로 assetsProvider에서 자산 조회
+- `_AssetInfoCard`: 타입 아이콘 + 이름 헤더 + ID·유형·위치·시리얼 번호 상세 정보
+- `_AssetQrCard`: `qr_flutter QrImageView` — 자산 ID 인코딩 QR 코드 생성
+  - 다크모드에서도 QR 배경 흰색 고정 (eyeStyle·dataModuleStyle 명시)
+  - mobile_scanner 연동 시 스캔 → /assets/:id 흐름 완성 예정
+
+**[작업 5] asset_form_screen.dart 신규**
+- `AssetFormScreen` (ConsumerStatefulWidget): 4개 필드(이름/유형/위치/시리얼 번호)
+- `_AssetFormBody`: AppValidators.required() 검증 + DropdownButtonFormField 유형 선택
+- 제출 성공 시 `assetsProvider.notifier.addAsset()` → SnackBar → `/assets` 이동
+
+**[작업 6] app_router.dart 수정 — 자산 하위 라우트 추가**
+- `/assets/new` → `AssetFormScreen` (new 먼저 선언해 :id와 충돌 방지)
+- `/assets/:id` → `AssetDetailScreen(assetId: id)`
+
+**[작업 7] app_strings.dart + top_bar_widget.dart 수정**
+- `AppStrings.assetListTitle·assetDetailTitle·assetFormTitle` 3개 추가
+- `_getPageTitle()`: `/assets/new` → '자산 등록', `/assets/:id` → '자산 상세' 분기 추가
+
+**[작업 8] pubspec.yaml — qr_flutter 추가**
+- `qr_flutter: ^4.1.0` 추가 후 `flutter pub get` 완료
+
+### 🐛 발생한 오류 & 해결 방법
+- 없음 (flutter analyze lib/ 오류 0건)
+
+### 📦 커밋 내역
+- `feat: 자산 Provider·상세·등록 폼·QR 코드 구현 (9주차)` (b50d97e)
+
+### 🔗 연관 파일 목록 (신규/수정)
+- `lib/views/assets/asset_mock_data.dart` (신규 — 모델 분리)
+- `lib/features/assets/assets_provider.dart` (신규)
+- `lib/views/assets/assets_screen.dart` (전면 재작성 — Provider 연동·검색)
+- `lib/views/assets/asset_detail_screen.dart` (신규 — QR 코드)
+- `lib/views/assets/asset_form_screen.dart` (신규 — 등록 폼)
+- `lib/core/router/app_router.dart` (/assets/new, /assets/:id 추가)
+- `lib/core/constants/app_strings.dart` (자산 타이틀 상수 추가)
+- `lib/views/layout/top_bar_widget.dart` (자산 경로 타이틀 분기)
+- `pubspec.yaml` (qr_flutter 추가)
+
+---
 ## 📅 2026-04-16
 
 ### ✅ 완료한 작업

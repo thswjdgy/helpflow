@@ -42,8 +42,15 @@ class TopBarWidget extends ConsumerWidget implements PreferredSizeWidget {
       return AppStrings.reportsTitle;
     } else if (currentLocation.startsWith('/notifications')) {
       return AppStrings.navNotifications;
+    } else if (currentLocation.startsWith('/assets/new')) {
+      return AppStrings.assetFormTitle;
+    } else if (currentLocation.startsWith('/assets/scan')) {
+      return AppStrings.assetScanTitle;
+    } else if (currentLocation.startsWith('/assets/') &&
+        currentLocation.length > '/assets/'.length) {
+      return AppStrings.assetDetailTitle;
     } else if (currentLocation.startsWith('/assets')) {
-      return AppStrings.navAssets;
+      return AppStrings.assetListTitle;
     } else if (currentLocation.startsWith('/settings')) {
       return AppStrings.settingsTitle;
     } else {

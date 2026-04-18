@@ -5,7 +5,9 @@ import '../../core/constants/app_colors.dart';
 import '../../core/design_system.dart';
 import '../../core/utils/validators.dart';
 import '../../features/auth/auth_provider.dart';
+import '../../features/assets/assets_provider.dart';
 import '../../features/tickets/tickets_provider.dart';
+import '../assets/asset_mock_data.dart';
 
 // ── 티켓 접수 폼 화면 ────────────────────────────────────────
 /// 새 티켓 접수 폼 화면
@@ -29,6 +31,9 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
   /// 선택된 우선순위 값 (영문 key)
   String _priority = 'medium';
 
+  /// 연결할 자산 ID (선택하지 않으면 null)
+  String? _selectedAssetId;
+
   @override
   void dispose() {
     _titleCtrl.dispose();
@@ -40,6 +45,12 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
   void _onSubmit() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
+    // 선택된 자산 이름 조회 (자산 ID가 있을 때만)
+    final assets = ref.read(assetsProvider);
+    final selectedAsset = _selectedAssetId == null
+        ? null
+        : assets.where((a) => a.id == _selectedAssetId).firstOrNull;
+
     // ticketsProvider를 통해 실제로 티켓 추가 (알림도 자동 생성됨)
     ref.read(ticketsProvider.notifier).addTicket(
           title: _titleCtrl.text.trim(),
@@ -47,6 +58,8 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
           category: _category,
           priority: _priority,
           reporterEmail: ref.read(authProvider).valueOrNull?.email ?? '',
+          assetId: selectedAsset?.id,
+          assetName: selectedAsset?.name,
         );
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -65,6 +78,9 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
     final userEmail =
         ref.watch(authProvider).valueOrNull?.email ?? '';
 
+    // 자산 목록 구독 — 자산 등록 시 드롭다운 자동 갱신
+    final assets = ref.watch(assetsProvider);
+
     return Scaffold(
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(HelpFlowSpacing.lg),
@@ -75,8 +91,11 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
           category: _category,
           priority: _priority,
           reporterEmail: userEmail,
+          assets: assets,
+          selectedAssetId: _selectedAssetId,
           onCategoryChanged: (v) => setState(() => _category = v),
           onPriorityChanged: (v) => setState(() => _priority = v),
+          onAssetChanged: (v) => setState(() => _selectedAssetId = v),
           onSubmit: _onSubmit,
         ),
       ),
@@ -93,8 +112,11 @@ class _FormBody extends StatelessWidget {
   final String category;
   final String priority;
   final String reporterEmail;
+  final List<MockAsset> assets;
+  final String? selectedAssetId;
   final ValueChanged<String> onCategoryChanged;
   final ValueChanged<String> onPriorityChanged;
+  final ValueChanged<String?> onAssetChanged;
   final VoidCallback onSubmit;
 
   // 카테고리 옵션 (영문 key → 한국어 레이블)
@@ -120,8 +142,11 @@ class _FormBody extends StatelessWidget {
     required this.category,
     required this.priority,
     required this.reporterEmail,
+    required this.assets,
+    required this.selectedAssetId,
     required this.onCategoryChanged,
     required this.onPriorityChanged,
+    required this.onAssetChanged,
     required this.onSubmit,
   });
 
@@ -196,6 +221,27 @@ class _FormBody extends StatelessWidget {
             onChanged: (v) {
               if (v != null) onPriorityChanged(v);
             },
+          ),
+
+          const SizedBox(height: HelpFlowSpacing.xl),
+
+          // ── 연관 자산 선택 ────────────────────────────────
+          Text('연관 자산 (선택)', style: HelpFlowTextStyles.body1),
+          const SizedBox(height: HelpFlowSpacing.sm),
+          _DropdownField<String?>(
+            value: selectedAssetId,
+            items: [
+              // 선택 안 함 옵션
+              const DropdownMenuItem(value: null, child: Text('연관 자산 없음')),
+              ...assets.map((a) => DropdownMenuItem(
+                    value: a.id,
+                    child: Text(
+                      '${a.name} (${a.id})',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  )),
+            ],
+            onChanged: onAssetChanged,
           ),
 
           const SizedBox(height: HelpFlowSpacing.xxxl),

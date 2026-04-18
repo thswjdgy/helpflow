@@ -29,6 +29,12 @@ dependencies:
   # 차트 (7주차~)
   fl_chart: ^0.68.0
 
+  # QR 코드 생성 (9주차~)
+  qr_flutter: ^4.1.0
+
+  # QR 코드 스캔 (10주차~)
+  mobile_scanner: ^5.2.3
+
   # Material Symbols 아이콘
   material_symbols_icons: ^4.2719.1
 

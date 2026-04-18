@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/auth_provider.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/register_screen.dart';
+import '../../views/assets/asset_detail_screen.dart';
+import '../../views/assets/asset_form_screen.dart';
+import '../../views/assets/asset_scan_screen.dart';
 import '../../views/assets/assets_screen.dart';
 import '../../views/dashboard/dashboard_screen.dart';
 import '../../views/notifications/notifications_screen.dart';
@@ -122,6 +125,26 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/assets',
             builder: (context, state) => const AssetsScreen(),
+            routes: [
+              // 자산 등록 (/assets/new) — :id 보다 먼저 선언해 충돌 방지
+              GoRoute(
+                path: 'new',
+                builder: (context, state) => const AssetFormScreen(),
+              ),
+              // QR 스캔 (/assets/scan) — :id 보다 먼저 선언
+              GoRoute(
+                path: 'scan',
+                builder: (context, state) => const AssetScanScreen(),
+              ),
+              // 자산 상세 (/assets/:id)
+              GoRoute(
+                path: ':id',
+                builder: (context, state) {
+                  final assetId = state.pathParameters['id'] ?? '';
+                  return AssetDetailScreen(assetId: assetId);
+                },
+              ),
+            ],
           ),
 
           // ── 설정 ────────────────────────────────────────────

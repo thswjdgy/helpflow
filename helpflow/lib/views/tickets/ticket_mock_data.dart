@@ -35,6 +35,12 @@ class MockTicket {
   /// 배정된 에이전트 이름 (미배정 시 null)
   final String? agentName;
 
+  /// 연관 자산 ID (미연결 시 null)
+  final String? assetId;
+
+  /// 연관 자산 이름 (미연결 시 null)
+  final String? assetName;
+
   const MockTicket({
     required this.id,
     required this.title,
@@ -46,6 +52,8 @@ class MockTicket {
     required this.createdAt,
     this.agentId,
     this.agentName,
+    this.assetId,
+    this.assetName,
   });
 
   /// 일부 필드만 바꾼 복사본 반환 (Provider에서 불변 업데이트에 사용)
@@ -60,6 +68,8 @@ class MockTicket {
     DateTime? createdAt,
     String? agentId,
     String? agentName,
+    String? assetId,
+    String? assetName,
   }) {
     return MockTicket(
       id: id ?? this.id,
@@ -72,6 +82,8 @@ class MockTicket {
       createdAt: createdAt ?? this.createdAt,
       agentId: agentId ?? this.agentId,
       agentName: agentName ?? this.agentName,
+      assetId: assetId ?? this.assetId,
+      assetName: assetName ?? this.assetName,
     );
   }
 }

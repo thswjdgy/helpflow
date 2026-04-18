@@ -45,6 +45,8 @@ class TicketsNotifier extends Notifier<List<MockTicket>> {
     required String category,
     required String priority,
     required String reporterEmail,
+    String? assetId,
+    String? assetName,
   }) {
     final id = _nextId();
     final newTicket = MockTicket(
@@ -56,6 +58,8 @@ class TicketsNotifier extends Notifier<List<MockTicket>> {
       category: category,
       reporterEmail: reporterEmail,
       createdAt: DateTime.now(),
+      assetId: assetId,
+      assetName: assetName,
     );
 
     // 최신 티켓을 맨 앞에 추가
