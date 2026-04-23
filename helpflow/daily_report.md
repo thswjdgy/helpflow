@@ -1,4 +1,76 @@
 ---
+## 📅 2026-04-23
+
+### ✅ 완료한 작업
+
+**[10주차 — QR 스캔·티켓-자산 연결·메모 알림]**
+
+**[작업 1] asset_scan_screen.dart 신규 (`lib/views/assets/`)**
+- `AssetScanScreen` (ConsumerStatefulWidget): `MobileScannerController` + `DetectionSpeed.noDuplicates`
+- `_onDetect()`: 스캔된 QR 값이 자산 ID와 일치하면 `/assets/:id` 이동, 없으면 SnackBar + `/assets`
+- `_processed` 플래그: 중복 감지 방지 (스캔 성공 직후 컨트롤러 중단)
+- `_ScanOverlay` + `_OverlayPainter`: `BlendMode.clear`로 스캔 프레임 투명 컷아웃, 모서리 라인 강조
+
+**[작업 2] assets_screen.dart 수정 — 이중 FAB 추가**
+- `FloatingActionButton.small(heroTag: 'scan')`: QR 스캔 버튼 → `/assets/scan` 이동
+- `FloatingActionButton.extended(heroTag: 'add')`: 자산 등록 버튼 → `/assets/new` 이동
+- heroTag 명시로 Hero 위젯 충돌 방지
+
+**[작업 3] app_router.dart 수정 — 스캔 라우트 추가**
+- `/assets/scan` → `AssetScanScreen` (`:id` 파라미터 충돌 방지를 위해 먼저 선언)
+
+**[작업 4] app_strings.dart + top_bar_widget.dart 수정**
+- `AppStrings.assetScanTitle = 'QR 코드 스캔'` 추가
+- `_getPageTitle()`: `/assets/scan` 분기 추가 (`:id` 분기보다 먼저 배치)
+
+**[작업 5] ticket_mock_data.dart + tickets_provider.dart 수정 — 자산 연결 필드 추가**
+- `MockTicket`에 `assetId`·`assetName` nullable 필드 추가 + `copyWith()` 반영
+- `TicketsNotifier.addTicket()`: `assetId`·`assetName` 선택적 파라미터 추가
+
+**[작업 6] ticket_form_screen.dart 수정 — 연관 자산 드롭다운 추가**
+- `_selectedAssetId` 상태 변수 추가
+- `assetsProvider` 구독 → `_FormBody`에 `assets`·`selectedAssetId`·`onAssetChanged` 전달
+- `_FormBody`: '연관 자산 (선택)' 드롭다운 추가 ('연관 자산 없음' + 자산 목록)
+- `_onSubmit()`: 선택 자산 이름 조회 후 `addTicket(assetId, assetName)` 전달
+- `_DropdownField<T>`: nullable 제네릭(`String?`) 지원으로 null 초기값 처리
+
+**[작업 7] ticket_detail_screen.dart 수정 — 연관 자산 정보 행 추가**
+- `_TicketInfoSection`: `ticket.assetId != null`일 때 연관 자산 행 표시
+- 탭 시 `context.go('/assets/:id')` 이동, 언더라인 + open_in_new 아이콘 표시
+
+**[작업 8] notes_provider.dart 수정 — 메모 저장 시 알림 자동 생성**
+- `addNote()`: 메모 저장 후 `notificationsProvider.addNotification(noteAdded)` 자동 호출
+- 알림 메시지: '$authorEmail님이 처리 내용을 등록했습니다'
+
+**[작업 9] 플랫폼 권한 설정**
+- `AndroidManifest.xml`: `CAMERA` permission + `android.hardware.camera` feature 추가
+- `ios/Runner/Info.plist`: `NSCameraUsageDescription` 추가 (한국어 설명)
+- `pubspec.yaml`: `mobile_scanner: ^5.2.3` 추가
+
+### 🐛 발생한 오류 & 해결 방법
+- `canvas.drawLine` 3번째 인자 누락: `Paint` 객체를 3번째 인자로 명시 (`cornerPaint`) 추가로 해결
+- 다중 FAB Hero 태그 충돌: `heroTag: 'scan'` / `heroTag: 'add'` 각각 지정으로 해결
+- `/assets/scan` 라우트가 `/assets/:id`에 잡힘: 라우터에서 `scan` 경로를 `:id` 앞에 선언하여 해결
+
+### 📦 커밋 내역
+- `feat: QR 스캔·티켓-자산 연결·메모 알림 구현 (10주차)` (858cdd7)
+
+### 🔗 연관 파일 목록 (신규/수정)
+- `lib/views/assets/asset_scan_screen.dart` (신규 — QR 스캔 + 투명 오버레이)
+- `lib/views/assets/assets_screen.dart` (이중 FAB)
+- `lib/core/router/app_router.dart` (/assets/scan 라우트 추가)
+- `lib/core/constants/app_strings.dart` (assetScanTitle 추가)
+- `lib/views/layout/top_bar_widget.dart` (스캔 타이틀 분기)
+- `lib/views/tickets/ticket_mock_data.dart` (assetId·assetName 필드)
+- `lib/features/tickets/tickets_provider.dart` (addTicket assetId·assetName)
+- `lib/views/tickets/ticket_form_screen.dart` (연관 자산 드롭다운)
+- `lib/views/tickets/ticket_detail_screen.dart` (연관 자산 정보 행)
+- `lib/features/notes/notes_provider.dart` (메모 저장 시 알림 자동 생성)
+- `pubspec.yaml` (mobile_scanner 추가)
+- `android/app/src/main/AndroidManifest.xml` (카메라 권한)
+- `ios/Runner/Info.plist` (카메라 사용 설명)
+
+---
 ## 📅 2026-04-18
 
 ### ✅ 완료한 작업

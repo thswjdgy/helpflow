@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../features/notifications/notifications_provider.dart';
+import '../../views/notifications/notifications_screen.dart';
 
 // ── 처리 메모 데이터 모델 ─────────────────────────────────────
 /// 티켓 처리 메모 데이터 모델
@@ -57,6 +59,18 @@ class NotesNotifier extends Notifier<Map<String, List<MockNote>>> {
       ...state,
       ticketId: [newNote, ...existing],
     };
+
+    // 처리 메모 추가 알림 자동 생성
+    ref.read(notificationsProvider.notifier).addNotification(
+          MockNotification(
+            id: 'noti-${DateTime.now().millisecondsSinceEpoch}',
+            type: NotificationType.noteAdded,
+            ticketId: ticketId,
+            ticketTitle: ticketId,
+            message: '$authorEmail님이 처리 내용을 등록했습니다',
+            createdAt: DateTime.now(),
+          ),
+        );
   }
 
   /// 특정 티켓의 메모 목록 반환 (없으면 빈 리스트)
@@ -78,7 +92,8 @@ final notesForTicketProvider =
 // [파일 요약]
 // 티켓 처리 메모 전역 상태 Provider입니다.
 // MockNote: id·ticketId·content·authorEmail·createdAt 필드를 가진 순수 Dart 모델
-// NotesNotifier: Map<ticketId, List<MockNote>> 상태 관리, addNote() 메서드 제공
+// NotesNotifier: Map<ticketId, List<MockNote>> 상태 관리
+//   addNote(): 메모 저장 후 notificationsProvider에 noteAdded 알림 자동 추가
 // notesProvider: 앱 전역 처리 메모 NotifierProvider
 // notesForTicketProvider: 특정 티켓 메모 목록을 구독하는 family Provider
 // Firestore 연동 시 firestore_notes_provider.dart로 교체합니다.

@@ -317,8 +317,8 @@ class _DropdownField<T> extends StatelessWidget {
 
 // [파일 요약]
 // 새 티켓 접수 폼 화면입니다.
-// TicketFormScreen: ConsumerStatefulWidget — authProvider에서 이메일 읽기, 폼 키 관리
-// _FormBody: 4개 입력 필드(제목/내용/카테고리/우선순위) + AppValidators 검증 + 제출 버튼
-// _DropdownField: 카테고리·우선순위 드롭다운 공통 래퍼
-// 제출 성공 시 ticketsProvider.addTicket() 호출 → SnackBar 피드백 → /tickets 이동
+// TicketFormScreen: ConsumerStatefulWidget — authProvider 이메일, assetsProvider 자산 목록 구독
+// _FormBody: 5개 입력 필드(제목/내용/카테고리/우선순위/연관 자산) + AppValidators 검증 + 제출 버튼
+// _DropdownField: 카테고리·우선순위·연관 자산 드롭다운 공통 래퍼 (nullable 제네릭 지원)
+// 제출 성공 시 ticketsProvider.addTicket(assetId, assetName 포함) 호출 → SnackBar → /tickets
 // addTicket()은 내부적으로 notificationsProvider에 새 알림도 자동 추가합니다.

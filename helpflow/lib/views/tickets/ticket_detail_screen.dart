@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/design_system.dart';
 import '../../features/auth/auth_provider.dart';
@@ -246,6 +247,47 @@ class _TicketInfoSection extends StatelessWidget {
                   '${ticket.createdAt.year}.${ticket.createdAt.month.toString().padLeft(2, '0')}.${ticket.createdAt.day.toString().padLeft(2, '0')}',
               colorScheme: colorScheme,
             ),
+            // 연관 자산이 있을 때만 표시 — 탭 시 자산 상세 화면으로 이동
+            if (ticket.assetId != null)
+              InkWell(
+                onTap: () => context.go('/assets/${ticket.assetId}'),
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 72,
+                        child: Text(
+                          '연관 자산',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: HelpFlowColors.gray400,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Text(
+                              ticket.assetName ?? ticket.assetId!,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: colorScheme.primary,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(Icons.open_in_new,
+                                size: 13, color: colorScheme.primary),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -647,7 +689,8 @@ class _NoteItem extends StatelessWidget {
 
 // [파일 요약]
 // 티켓 상세 화면입니다.
-// _TicketInfoSection   : 제목·설명·카테고리·접수자·담당자·접수일 표시 카드
+// _TicketInfoSection   : 제목·설명·카테고리·접수자·담당자·접수일·연관 자산 표시 카드
+//                        연관 자산 행은 탭 시 /assets/:id 상세 화면으로 이동 (go_router)
 // _AgentAssignSection  : ADMIN 전용 ConsumerStatefulWidget — ticketsProvider.assignAgent() 실제 연동
 // _StatusSection       : 현재 상태 배지 + 다음 상태 변경 버튼 (USER는 읽기 전용)
 // _NoteSection         : AGENT·ADMIN 전용 처리 내용 입력 + 저장 버튼 (notesProvider에 실제 저장)
