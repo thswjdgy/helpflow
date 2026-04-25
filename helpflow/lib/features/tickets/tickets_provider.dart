@@ -47,6 +47,7 @@ class TicketsNotifier extends Notifier<List<MockTicket>> {
     required String reporterEmail,
     String? assetId,
     String? assetName,
+    List<String> imageUrls = const [],
   }) {
     final id = _nextId();
     final newTicket = MockTicket(
@@ -60,6 +61,7 @@ class TicketsNotifier extends Notifier<List<MockTicket>> {
       createdAt: DateTime.now(),
       assetId: assetId,
       assetName: assetName,
+      imageUrls: imageUrls,
     );
 
     // 최신 티켓을 맨 앞에 추가
