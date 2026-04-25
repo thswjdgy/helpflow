@@ -41,6 +41,33 @@ class AssetsNotifier extends Notifier<List<MockAsset>> {
     // 최신 자산을 맨 앞에 추가
     state = [newAsset, ...state];
   }
+
+  /// 기존 자산 수정 — ID로 찾아 필드만 교체 (불변 업데이트)
+  void updateAsset({
+    required String id,
+    required String name,
+    required AssetType type,
+    required String location,
+    required String serialNumber,
+  }) {
+    state = [
+      for (final a in state)
+        if (a.id == id)
+          a.copyWith(
+            name: name,
+            type: type,
+            location: location,
+            serialNumber: serialNumber,
+          )
+        else
+          a,
+    ];
+  }
+
+  /// 자산 삭제 — ID와 일치하는 항목 제거
+  void deleteAsset(String id) {
+    state = state.where((a) => a.id != id).toList();
+  }
 }
 
 /// 앱 전역 자산 목록 Provider (목업 기반)
@@ -50,6 +77,9 @@ final assetsProvider =
 
 // [파일 요약]
 // 목업 기반 자산 목록 전역 상태 Provider입니다.
-// AssetsNotifier: addAsset() 메서드 — ID 자동생성(AST-011, AST-012, …)
+// AssetsNotifier: addAsset() / updateAsset() / deleteAsset() CRUD 메서드
+//   - ID 자동생성: AST-011, AST-012, …
+//   - updateAsset(): 불변 업데이트 (copyWith 패턴)
+//   - deleteAsset(): ID 일치 항목 필터 제거
 // assetsProvider: 앱 전역 자산 목록 NotifierProvider
 // Firestore 연동 시 features/assets/firestore_assets_provider.dart로 교체합니다.

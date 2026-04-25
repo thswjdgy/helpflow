@@ -2,6 +2,8 @@
     <!-- QR 코드 스캔을 위한 카메라 권한 (mobile_scanner) -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- 티켓 이미지 첨부를 위한 미디어 읽기 권한 (image_picker, Android 13+) -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
     <application
         android:label="helpflow"

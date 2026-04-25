@@ -35,6 +35,9 @@ dependencies:
   # QR 코드 스캔 (10주차~)
   mobile_scanner: ^5.2.3
 
+  # 이미지 첨부 (11주차~)
+  image_picker: ^1.2.1
+
   # Material Symbols 아이콘
   material_symbols_icons: ^4.2719.1
 

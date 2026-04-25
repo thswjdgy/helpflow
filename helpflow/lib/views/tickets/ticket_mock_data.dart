@@ -41,6 +41,9 @@ class MockTicket {
   /// 연관 자산 이름 (미연결 시 null)
   final String? assetName;
 
+  /// 첨부 이미지 로컬 경로 목록 (없으면 빈 리스트)
+  final List<String> imageUrls;
+
   const MockTicket({
     required this.id,
     required this.title,
@@ -54,6 +57,7 @@ class MockTicket {
     this.agentName,
     this.assetId,
     this.assetName,
+    this.imageUrls = const [],
   });
 
   /// 일부 필드만 바꾼 복사본 반환 (Provider에서 불변 업데이트에 사용)
@@ -70,6 +74,7 @@ class MockTicket {
     String? agentName,
     String? assetId,
     String? assetName,
+    List<String>? imageUrls,
   }) {
     return MockTicket(
       id: id ?? this.id,
@@ -84,6 +89,7 @@ class MockTicket {
       agentName: agentName ?? this.agentName,
       assetId: assetId ?? this.assetId,
       assetName: assetName ?? this.assetName,
+      imageUrls: imageUrls ?? this.imageUrls,
     );
   }
 }

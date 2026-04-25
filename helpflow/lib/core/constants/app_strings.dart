@@ -35,6 +35,7 @@ class AppStrings {
   static const String assetListTitle = '자산 관리';
   static const String assetDetailTitle = '자산 상세';
   static const String assetFormTitle = '자산 등록';
+  static const String assetEditTitle = '자산 수정';
   static const String assetScanTitle = 'QR 코드 스캔';
 
   // ── 리포트 ────────────────────────────────────────────────────
