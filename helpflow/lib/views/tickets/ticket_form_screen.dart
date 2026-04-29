@@ -1,6 +1,9 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/design_system.dart';
 import '../../core/utils/validators.dart';
@@ -34,11 +37,32 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
   /// 연결할 자산 ID (선택하지 않으면 null)
   String? _selectedAssetId;
 
+  /// 선택된 첨부 이미지 목록 (최대 3장)
+  List<XFile> _selectedImages = [];
+
+  /// image_picker 인스턴스
+  final _picker = ImagePicker();
+
   @override
   void dispose() {
     _titleCtrl.dispose();
     _contentCtrl.dispose();
     super.dispose();
+  }
+
+  /// 이미지 선택 핸들러 — 갤러리에서 최대 3장 선택
+  Future<void> _pickImages() async {
+    final remaining = 3 - _selectedImages.length;
+    if (remaining <= 0) return;
+    final picked = await _picker.pickMultiImage(limit: remaining);
+    if (picked.isNotEmpty) {
+      setState(() => _selectedImages = [..._selectedImages, ...picked]);
+    }
+  }
+
+  /// 특정 인덱스 이미지 제거
+  void _removeImage(int index) {
+    setState(() => _selectedImages.removeAt(index));
   }
 
   /// 폼 제출 핸들러 — 유효성 통과 시 ticketsProvider에 티켓 추가 후 목록으로 이동
@@ -60,6 +84,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
           reporterEmail: ref.read(authProvider).valueOrNull?.email ?? '',
           assetId: selectedAsset?.id,
           assetName: selectedAsset?.name,
+          imageUrls: _selectedImages.map((x) => x.path).toList(),
         );
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -93,9 +118,12 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
           reporterEmail: userEmail,
           assets: assets,
           selectedAssetId: _selectedAssetId,
+          selectedImages: _selectedImages,
           onCategoryChanged: (v) => setState(() => _category = v),
           onPriorityChanged: (v) => setState(() => _priority = v),
           onAssetChanged: (v) => setState(() => _selectedAssetId = v),
+          onPickImages: _pickImages,
+          onRemoveImage: _removeImage,
           onSubmit: _onSubmit,
         ),
       ),
@@ -114,9 +142,12 @@ class _FormBody extends StatelessWidget {
   final String reporterEmail;
   final List<MockAsset> assets;
   final String? selectedAssetId;
+  final List<XFile> selectedImages;
   final ValueChanged<String> onCategoryChanged;
   final ValueChanged<String> onPriorityChanged;
   final ValueChanged<String?> onAssetChanged;
+  final VoidCallback onPickImages;
+  final ValueChanged<int> onRemoveImage;
   final VoidCallback onSubmit;
 
   // 카테고리 옵션 (영문 key → 한국어 레이블)
@@ -144,9 +175,12 @@ class _FormBody extends StatelessWidget {
     required this.reporterEmail,
     required this.assets,
     required this.selectedAssetId,
+    required this.selectedImages,
     required this.onCategoryChanged,
     required this.onPriorityChanged,
     required this.onAssetChanged,
+    required this.onPickImages,
+    required this.onRemoveImage,
     required this.onSubmit,
   });
 
@@ -244,6 +278,105 @@ class _FormBody extends StatelessWidget {
             onChanged: onAssetChanged,
           ),
 
+          const SizedBox(height: HelpFlowSpacing.xl),
+
+          // ── 이미지 첨부 ───────────────────────────────────
+          Row(
+            children: [
+              Text('이미지 첨부 (선택)', style: HelpFlowTextStyles.body1),
+              const SizedBox(width: HelpFlowSpacing.sm),
+              Text(
+                '${selectedImages.length}/3',
+                style: const TextStyle(
+                    fontSize: 12, color: HelpFlowColors.gray400),
+              ),
+            ],
+          ),
+          const SizedBox(height: HelpFlowSpacing.sm),
+          SizedBox(
+            height: 88,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                // 선택된 이미지 썸네일 목록
+                ...selectedImages.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final xfile = entry.value;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: HelpFlowSpacing.sm),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: kIsWeb
+                              ? Container(
+                                  width: 80,
+                                  height: 80,
+                                  color: HelpFlowColors.gray100,
+                                  child: const Icon(Icons.image,
+                                      color: HelpFlowColors.gray400),
+                                )
+                              : Image.file(
+                                  File(xfile.path),
+                                  width: 80,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                ),
+                        ),
+                        // X 버튼 — 해당 이미지 제거
+                        Positioned(
+                          top: 2,
+                          right: 2,
+                          child: GestureDetector(
+                            onTap: () => onRemoveImage(index),
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.close,
+                                  size: 12, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                // 추가 버튼 (최대 3장 미만일 때만 표시)
+                if (selectedImages.length < 3)
+                  InkWell(
+                    onTap: onPickImages,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: HelpFlowColors.gray400,
+                          style: BorderStyle.solid,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_photo_alternate_outlined,
+                              color: HelpFlowColors.gray400, size: 24),
+                          SizedBox(height: 4),
+                          Text('사진 추가',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: HelpFlowColors.gray400)),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
           const SizedBox(height: HelpFlowSpacing.xxxl),
 
           // ── 제출 버튼 ─────────────────────────────────────
@@ -318,7 +451,10 @@ class _DropdownField<T> extends StatelessWidget {
 // [파일 요약]
 // 새 티켓 접수 폼 화면입니다.
 // TicketFormScreen: ConsumerStatefulWidget — authProvider 이메일, assetsProvider 자산 목록 구독
-// _FormBody: 5개 입력 필드(제목/내용/카테고리/우선순위/연관 자산) + AppValidators 검증 + 제출 버튼
-// _DropdownField: 카테고리·우선순위·연관 자산 드롭다운 공통 래퍼 (nullable 제네릭 지원)
-// 제출 성공 시 ticketsProvider.addTicket(assetId, assetName 포함) 호출 → SnackBar → /tickets
-// addTicket()은 내부적으로 notificationsProvider에 새 알림도 자동 추가합니다.
+//   _selectedImages: List<XFile> — 갤러리에서 선택한 이미지 (최대 3장)
+//   _pickImages(): ImagePicker.pickMultiImage(limit) 호출
+// _FormBody: 6개 섹션(제목/내용/카테고리/우선순위/연관 자산/이미지 첨부) + 제출 버튼
+//   이미지 섹션: 썸네일 가로 스크롤 + X 버튼 제거 + 추가 버튼
+//   kIsWeb 분기: 웹에서는 이미지 미리보기 대신 placeholder 아이콘 표시
+// _DropdownField: nullable 제네릭 드롭다운 공통 래퍼
+// 제출 시 ticketsProvider.addTicket(imageUrls: paths) 포함 호출 → SnackBar → /tickets

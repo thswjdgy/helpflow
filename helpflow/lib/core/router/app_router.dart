@@ -5,6 +5,7 @@ import '../../features/auth/auth_provider.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/register_screen.dart';
 import '../../views/assets/asset_detail_screen.dart';
+import '../../views/assets/asset_edit_screen.dart';
 import '../../views/assets/asset_form_screen.dart';
 import '../../views/assets/asset_scan_screen.dart';
 import '../../views/assets/assets_screen.dart';
@@ -135,6 +136,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'scan',
                 builder: (context, state) => const AssetScanScreen(),
+              ),
+              // 자산 수정 (/assets/edit/:id) — :id 보다 먼저 선언
+              GoRoute(
+                path: 'edit/:id',
+                builder: (context, state) {
+                  final assetId = state.pathParameters['id'] ?? '';
+                  return AssetEditScreen(assetId: assetId);
+                },
               ),
               // 자산 상세 (/assets/:id)
               GoRoute(

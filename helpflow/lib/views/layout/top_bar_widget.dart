@@ -46,6 +46,8 @@ class TopBarWidget extends ConsumerWidget implements PreferredSizeWidget {
       return AppStrings.assetFormTitle;
     } else if (currentLocation.startsWith('/assets/scan')) {
       return AppStrings.assetScanTitle;
+    } else if (currentLocation.startsWith('/assets/edit/')) {
+      return AppStrings.assetEditTitle;
     } else if (currentLocation.startsWith('/assets/') &&
         currentLocation.length > '/assets/'.length) {
       return AppStrings.assetDetailTitle;

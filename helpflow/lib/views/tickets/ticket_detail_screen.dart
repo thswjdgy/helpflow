@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -157,6 +159,12 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
           children: [
             // 티켓 기본 정보 카드
             _TicketInfoSection(ticket: ticket),
+
+            // 첨부 이미지 갤러리 (이미지가 있을 때만 표시)
+            if (ticket.imageUrls.isNotEmpty) ...[
+              const SizedBox(height: HelpFlowSpacing.xxl),
+              _ImageGallerySection(imageUrls: ticket.imageUrls),
+            ],
 
             const SizedBox(height: HelpFlowSpacing.xxl),
 
@@ -687,6 +695,74 @@ class _NoteItem extends StatelessWidget {
   }
 }
 
+// ── 이미지 갤러리 섹션 ────────────────────────────────────────
+/// 티켓에 첨부된 이미지 목록을 가로 스크롤 갤러리로 표시하는 카드
+/// kIsWeb 분기: 웹에서는 이미지 경로 대신 placeholder 아이콘 표시
+class _ImageGallerySection extends StatelessWidget {
+  final List<String> imageUrls;
+
+  const _ImageGallerySection({required this.imageUrls});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(HelpFlowSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '첨부 이미지 (${imageUrls.length}장)',
+              style: HelpFlowTextStyles.headline3,
+            ),
+            const SizedBox(height: HelpFlowSpacing.md),
+            SizedBox(
+              height: 120,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: imageUrls.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(width: HelpFlowSpacing.sm),
+                itemBuilder: (context, index) {
+                  final path = imageUrls[index];
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: kIsWeb
+                        // 웹 환경: 로컬 파일 경로 접근 불가 → placeholder 표시
+                        ? Container(
+                            width: 120,
+                            height: 120,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest,
+                            child: const Icon(Icons.image_outlined,
+                                size: 40, color: HelpFlowColors.gray400),
+                          )
+                        // 모바일 환경: 로컬 파일 직접 표시
+                        : Image.file(
+                            File(path),
+                            width: 120,
+                            height: 120,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Container(
+                              width: 120,
+                              height: 120,
+                              color: HelpFlowColors.gray100,
+                              child: const Icon(Icons.broken_image_outlined,
+                                  color: HelpFlowColors.gray400),
+                            ),
+                          ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // [파일 요약]
 // 티켓 상세 화면입니다.
 // _TicketInfoSection   : 제목·설명·카테고리·접수자·담당자·접수일·연관 자산 표시 카드
@@ -694,6 +770,7 @@ class _NoteItem extends StatelessWidget {
 // _AgentAssignSection  : ADMIN 전용 ConsumerStatefulWidget — ticketsProvider.assignAgent() 실제 연동
 // _StatusSection       : 현재 상태 배지 + 다음 상태 변경 버튼 (USER는 읽기 전용)
 // _NoteSection         : AGENT·ADMIN 전용 처리 내용 입력 + 저장 버튼 (notesProvider에 실제 저장)
+// _ImageGallerySection : 첨부 이미지 가로 스크롤 갤러리 (kIsWeb 분기로 크로스 플랫폼 대응)
 // _NoteHistorySection  : 저장된 처리 메모 이력 목록 (notesForTicketProvider 구독, 자동 갱신)
 // _NoteItem            : 개별 메모 아이템 (작성자·시각·내용)
 // ticketsProvider 구독: 상태 변경·담당자 배정 시 화면이 자동으로 재빌드됩니다.

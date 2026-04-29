@@ -1,4 +1,77 @@
 ---
+## 📅 2026-04-29
+
+### ✅ 완료한 작업
+
+**[11주차 — 자산 수정·삭제 CRUD 완성 + 티켓 이미지 첨부 (image_picker)]**
+
+**[작업 1] assets_provider.dart 수정 — updateAsset() + deleteAsset() 추가**
+- `updateAsset(id, name, type, location, serialNumber)`: copyWith 패턴으로 불변 업데이트
+- `deleteAsset(id)`: where 필터로 해당 ID 제거
+
+**[작업 2] asset_edit_screen.dart 신규 (`lib/views/assets/`)**
+- `AssetEditScreen(assetId)` (ConsumerStatefulWidget): assetsProvider에서 자산 조회 후 pre-fill
+- `_initFields()`: `_initialized` 플래그로 build 재호출 시 컨트롤러 덮어쓰기 방지
+- `_onSubmit()`: `assetsProvider.updateAsset()` 호출 → SnackBar → `/assets/:id` 복귀
+- `_AssetEditBody`: 4개 필드(이름/유형/위치/시리얼 번호) + AppValidators 검증 + '수정 완료' 버튼
+
+**[작업 3] asset_detail_screen.dart 수정 — ADMIN 수정·삭제 버튼**
+- `authProvider` 구독으로 role 확인 → `isAdmin`이면 `_AdminActionsCard` 표시
+- `_AdminActionsCard` (ConsumerWidget): 수정(OutlinedButton → `/assets/edit/:id`) + 삭제(AlertDialog 확인 후 deleteAsset() → `/assets`)
+- 삭제 버튼: `AppColors.error` 색상으로 위험 액션 강조
+
+**[작업 4] app_router.dart 수정 — `/assets/edit/:id` 라우트 추가**
+- `GoRoute(path: 'edit/:id', ...)` → `AssetEditScreen(assetId: id)`
+- `:id` 보다 먼저 선언하여 정적 세그먼트 우선 매칭
+
+**[작업 5] app_strings.dart + top_bar_widget.dart 수정**
+- `AppStrings.assetEditTitle = '자산 수정'` 추가
+- `_getPageTitle()`: `/assets/edit/` 분기 추가 (scan·detail 사이에 배치)
+
+**[작업 6] ticket_mock_data.dart + tickets_provider.dart 수정 — imageUrls 필드 추가**
+- `MockTicket.imageUrls: List<String>` (기본값 `const []`)
+- `copyWith()` imageUrls 파라미터 추가
+- `TicketsNotifier.addTicket()` imageUrls 파라미터 추가
+
+**[작업 7] ticket_form_screen.dart 수정 — 이미지 첨부 UI**
+- `image_picker: ^1.2.1` (flutter pub add로 자동 최신화)
+- `_selectedImages: List<XFile>` 상태, `_picker: ImagePicker`
+- `_pickImages()`: `pickMultiImage(limit: remaining)` — 잔여 슬롯만큼 추가 선택
+- `_removeImage(index)`: 특정 인덱스 이미지 제거
+- `_FormBody` 이미지 섹션: 썸네일 가로 스크롤 + X 버튼 + '사진 추가' 버튼 (최대 3장)
+- `kIsWeb` 분기: 웹 환경은 placeholder 아이콘, 모바일은 `Image.file(File(path))`
+- `_onSubmit()`: `imageUrls: _selectedImages.map((x) => x.path).toList()` 포함
+
+**[작업 8] ticket_detail_screen.dart 수정 — 첨부 이미지 갤러리**
+- `_ImageGallerySection`: `ticket.imageUrls.isNotEmpty`일 때만 표시
+- 120×120 썸네일 가로 스크롤 ListView + `kIsWeb` 분기 + errorBuilder
+
+**[작업 9] 플랫폼 권한 설정**
+- `ios/Runner/Info.plist`: `NSPhotoLibraryUsageDescription` 추가
+- `android/app/src/main/AndroidManifest.xml`: `READ_MEDIA_IMAGES` 추가 (Android 13+)
+
+### 🐛 발생한 오류 & 해결 방법
+- 없음 (flutter analyze lib/ 오류 0건)
+
+### 📦 커밋 내역
+- `feat: 자산 수정·삭제 + 이미지 첨부 기능 구현 (11주차)` (2359fdd)
+
+### 🔗 연관 파일 목록 (신규/수정)
+- `lib/features/assets/assets_provider.dart` (updateAsset·deleteAsset 추가)
+- `lib/views/assets/asset_edit_screen.dart` (신규 — 수정 폼)
+- `lib/views/assets/asset_detail_screen.dart` (ADMIN 수정·삭제 버튼)
+- `lib/core/router/app_router.dart` (/assets/edit/:id 추가)
+- `lib/core/constants/app_strings.dart` (assetEditTitle)
+- `lib/views/layout/top_bar_widget.dart` (/assets/edit/ 타이틀)
+- `lib/views/tickets/ticket_mock_data.dart` (imageUrls 필드)
+- `lib/features/tickets/tickets_provider.dart` (addTicket imageUrls)
+- `lib/views/tickets/ticket_form_screen.dart` (image_picker 첨부 UI)
+- `lib/views/tickets/ticket_detail_screen.dart` (이미지 갤러리 섹션)
+- `pubspec.yaml` (image_picker 추가)
+- `android/app/src/main/AndroidManifest.xml` (READ_MEDIA_IMAGES)
+- `ios/Runner/Info.plist` (NSPhotoLibraryUsageDescription)
+
+---
 ## 📅 2026-04-23
 
 ### ✅ 완료한 작업

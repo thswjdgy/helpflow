@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/design_system.dart';
 import '../../features/assets/assets_provider.dart';
+import '../../features/auth/auth_provider.dart';
 import 'asset_mock_data.dart';
 
 // ── 자산 상세 화면 ────────────────────────────────────────────
@@ -35,6 +37,10 @@ class AssetDetailScreen extends ConsumerWidget {
       );
     }
 
+    // 현재 로그인 사용자 역할 확인 (ADMIN만 수정·삭제 가능)
+    final userRole = ref.watch(authProvider).valueOrNull?.role ?? 'user';
+    final isAdmin = userRole == 'admin';
+
     return Scaffold(
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(HelpFlowSpacing.lg),
@@ -48,6 +54,12 @@ class AssetDetailScreen extends ConsumerWidget {
 
             // QR 코드 카드 (자산 ID 인코딩)
             _AssetQrCard(asset: asset),
+
+            // ADMIN 전용: 수정·삭제 버튼 영역
+            if (isAdmin) ...[
+              const SizedBox(height: HelpFlowSpacing.xxl),
+              _AdminActionsCard(asset: asset),
+            ],
           ],
         ),
       ),
@@ -281,9 +293,85 @@ class _AssetQrCard extends StatelessWidget {
   }
 }
 
+// ── ADMIN 수정·삭제 버튼 영역 ─────────────────────────────────
+/// ADMIN 전용 — 자산 수정 이동 버튼 + 삭제 확인 다이얼로그
+class _AdminActionsCard extends ConsumerWidget {
+  final MockAsset asset;
+
+  const _AdminActionsCard({required this.asset});
+
+  /// 삭제 확인 다이얼로그 표시 후 확인 시 assetsProvider.deleteAsset() 호출
+  void _onDelete(BuildContext context, WidgetRef ref) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('자산 삭제'),
+        content: Text('"${asset.name}"을(를) 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: AppColors.error),
+            onPressed: () {
+              Navigator.pop(ctx);
+              ref.read(assetsProvider.notifier).deleteAsset(asset.id);
+              context.go('/assets');
+            },
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(HelpFlowSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('자산 관리', style: HelpFlowTextStyles.headline3),
+            const SizedBox(height: HelpFlowSpacing.md),
+            Row(
+              children: [
+                // 수정 버튼 → /assets/edit/:id 이동
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.go('/assets/edit/${asset.id}'),
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    label: const Text('수정'),
+                  ),
+                ),
+                const SizedBox(width: HelpFlowSpacing.md),
+                // 삭제 버튼 → 확인 다이얼로그
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _onDelete(context, ref),
+                    icon: const Icon(Icons.delete_outline, size: 16),
+                    label: const Text('삭제'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.error,
+                      side: const BorderSide(color: AppColors.error),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // [파일 요약]
 // 자산 상세 화면입니다.
-// AssetDetailScreen  : ConsumerWidget — assetsProvider 구독, assetId로 자산 조회
+// AssetDetailScreen  : ConsumerWidget — assetsProvider + authProvider 구독
 // _AssetInfoCard     : 타입 아이콘 + 이름 헤더 + 자산ID·유형·위치·시리얼 번호 상세 정보
 // _AssetQrCard       : qr_flutter QrImageView — 자산 ID 인코딩 QR 코드 표시
-// mobile_scanner 연동 시 QR 스캔 → /assets/:id 이동 흐름이 완성됩니다.
+// _AdminActionsCard  : ADMIN 전용 — 수정(/assets/edit/:id) + 삭제 확인 다이얼로그
