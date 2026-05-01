@@ -46,6 +46,10 @@ class ReportsScreen extends ConsumerWidget {
               title: '우선순위별 분포',
               items: _priorityItems(tickets),
             ),
+            const SizedBox(height: HelpFlowSpacing.xxl),
+
+            // 담당자별 처리 건수 (배정된 티켓만 집계)
+            _AgentStatsSection(tickets: tickets),
           ],
         ),
       ),
@@ -479,10 +483,147 @@ class _WeeklyBarChart extends StatelessWidget {
   }
 }
 
+// ── 담당자별 처리 건수 섹션 ──────────────────────────────────
+/// 담당자(에이전트)별 배정·처리·완료 티켓 건수를 카드로 표시
+/// agentName이 있는 티켓만 집계합니다.
+class _AgentStatsSection extends StatelessWidget {
+  final List<MockTicket> tickets;
+
+  const _AgentStatsSection({required this.tickets});
+
+  @override
+  Widget build(BuildContext context) {
+    // 담당자가 배정된 티켓만 추출
+    final assigned = tickets.where((t) => t.agentName != null).toList();
+
+    // 담당자 이름 목록 중복 제거
+    final agentNames = assigned.map((t) => t.agentName!).toSet().toList()
+      ..sort();
+
+    if (agentNames.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // 담당자별 통계 계산
+    final stats = agentNames.map((name) {
+      final agentTickets = assigned.where((t) => t.agentName == name);
+      return _AgentStat(
+        name: name,
+        total: agentTickets.length,
+        resolved: agentTickets
+            .where((t) => t.status == 'resolved' || t.status == 'closed')
+            .length,
+        inProgress: agentTickets.where((t) => t.status == 'in_progress').length,
+      );
+    }).toList();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(HelpFlowSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('담당자별 처리 현황', style: HelpFlowTextStyles.headline3),
+            const SizedBox(height: HelpFlowSpacing.md),
+            const Divider(height: 1),
+            ...stats.map((s) => _AgentStatRow(stat: s)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 담당자 1명의 통계 데이터 모델
+class _AgentStat {
+  final String name;
+  final int total;
+  final int resolved;
+  final int inProgress;
+
+  const _AgentStat({
+    required this.name,
+    required this.total,
+    required this.resolved,
+    required this.inProgress,
+  });
+}
+
+/// 담당자 1행 — 이름 + 배정·처리중·완료 건수 칩
+class _AgentStatRow extends StatelessWidget {
+  final _AgentStat stat;
+
+  const _AgentStatRow({required this.stat});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: HelpFlowSpacing.md),
+      child: Row(
+        children: [
+          // 담당자 아이콘 + 이름
+          const Icon(Icons.person_outline,
+              size: 18, color: HelpFlowColors.gray400),
+          const SizedBox(width: HelpFlowSpacing.sm),
+          Expanded(
+            child: Text(
+              stat.name,
+              style: const TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+          ),
+          // 처리중 칩
+          _StatChip(
+            label: '처리중 ${stat.inProgress}',
+            color: AppColors.statusInProgress,
+          ),
+          const SizedBox(width: HelpFlowSpacing.sm),
+          // 완료 칩
+          _StatChip(
+            label: '완료 ${stat.resolved}',
+            color: AppColors.statusDone,
+          ),
+          const SizedBox(width: HelpFlowSpacing.sm),
+          // 전체 칩
+          _StatChip(
+            label: '전체 ${stat.total}',
+            color: HelpFlowColors.gray400,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 통계 수치를 작은 색상 칩으로 표시
+class _StatChip extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _StatChip({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withAlpha(25),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+            fontSize: 11, fontWeight: FontWeight.w600, color: color),
+      ),
+    );
+  }
+}
+
 // [파일 요약]
 // 리포트 화면입니다.
-// ReportsScreen      : ConsumerWidget — ticketsProvider 구독, 새 티켓 접수 시 자동 갱신
-// _SummaryCards      : 총 티켓·처리중·완료·새 티켓 요약 카드 (Wrap 반응형)
-// _StatusPieChart    : fl_chart PieChart — 상태별 분포 시각화
-// _WeeklyBarChart    : fl_chart BarChart — 최근 7일 날짜별 접수 건수 (요일 레이블)
+// ReportsScreen       : ConsumerWidget — ticketsProvider 구독, 새 티켓 접수 시 자동 갱신
+// _SummaryCards       : 총 티켓·처리중·완료·새 티켓 요약 카드 (Wrap 반응형)
+// _StatusPieChart     : fl_chart PieChart — 상태별 분포 시각화
+// _WeeklyBarChart     : fl_chart BarChart — 최근 7일 날짜별 접수 건수 (요일 레이블)
 // _DistributionSection: 카테고리·우선순위별 LinearProgressIndicator 분포 바
+// _AgentStatsSection  : 담당자별 배정·처리중·완료 건수 카드 (배정 티켓만 집계)

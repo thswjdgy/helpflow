@@ -29,6 +29,7 @@ class AppStrings {
   static const String ticketDetailTitle = '티켓 상세';
   static const String ticketFormTitleNew = '새 티켓 작성';
   static const String ticketFormTitleEdit = '티켓 수정';
+  static const String ticketEditTitle = '티켓 수정';
   static const String newTicket = '새 티켓';
 
   // ── 자산 관리 ─────────────────────────────────────────────────

@@ -1,4 +1,56 @@
 ---
+## 📅 2026-05-01
+
+### ✅ 완료한 작업
+
+**[12주차 — 티켓 수정·종료(CLOSED) + 담당자별 통계 + UI 마무리]**
+
+**[작업 1] tickets_provider.dart 수정 — updateTicket() 추가**
+- `updateTicket(ticketId, title, description, category, priority)`: copyWith 불변 업데이트
+- 내용 수정은 알림 없이 조용히 처리 (상태 변경 알림과 분리)
+
+**[작업 2] ticket_edit_screen.dart 신규 (`lib/views/tickets/`)**
+- `TicketEditScreen(ticketId)` (ConsumerStatefulWidget): ticketsProvider 조회 후 pre-fill
+- `_initFields()`: `_initialized` 플래그로 build 재호출 시 덮어쓰기 방지
+- `_onSubmit()`: `ticketsProvider.updateTicket()` → SnackBar → `/tickets/:id` 복귀
+- `_TicketEditBody`: 제목·내용·카테고리·우선순위 4개 필드 + AppValidators 검증
+
+**[작업 3] ticket_detail_screen.dart 수정 — resolved→closed + 편집 버튼**
+- `_nextStatus()`: `resolved` → `'closed'` 케이스 추가 (완전한 4단계 상태 흐름 완성)
+- 편집 버튼 추가: AGENT·ADMIN 항상 표시 / USER는 본인 'new' 티켓일 때만 표시
+- `canEdit` 조건: `userRole != 'user' || (본인 이메일 && status == 'new')`
+
+**[작업 4] app_router.dart 수정 — `/tickets/edit/:id` 라우트 추가**
+- `GoRoute(path: 'edit/:id', ...)` → `TicketEditScreen(ticketId: id)`
+- `new` 다음, `:id` 이전에 선언하여 정적 세그먼트 우선 매칭
+
+**[작업 5] app_strings.dart + top_bar_widget.dart 수정**
+- `AppStrings.ticketEditTitle = '티켓 수정'` 추가
+- `_getPageTitle()`: `/tickets/edit/` 분기 추가
+
+**[작업 6] reports_screen.dart 수정 — 담당자별 처리 현황 섹션**
+- `_AgentStatsSection`: agentName이 있는 티켓만 집계, 담당자 이름 기준 정렬
+- `_AgentStat` 모델: name·total·resolved·inProgress 집계
+- `_AgentStatRow`: 담당자 이름 + 처리중·완료·전체 칩 (`_StatChip`) 행 표시
+- `_StatChip`: 색상 배경 + 수치 텍스트 소형 칩 위젯
+- 담당자가 없을 경우 섹션 전체 숨김 (`SizedBox.shrink()`)
+
+### 🐛 발생한 오류 & 해결 방법
+- 없음 (flutter analyze lib/ 오류 0건)
+
+### 📦 커밋 내역
+- `feat: 티켓 수정·종료 처리 + 담당자별 통계 구현 (12주차)` (dafe9f6)
+
+### 🔗 연관 파일 목록 (신규/수정)
+- `lib/features/tickets/tickets_provider.dart` (updateTicket 추가)
+- `lib/views/tickets/ticket_edit_screen.dart` (신규 — 수정 폼)
+- `lib/views/tickets/ticket_detail_screen.dart` (resolved→closed, 편집 버튼)
+- `lib/core/router/app_router.dart` (/tickets/edit/:id 추가)
+- `lib/core/constants/app_strings.dart` (ticketEditTitle)
+- `lib/views/layout/top_bar_widget.dart` (/tickets/edit/ 타이틀)
+- `lib/views/reports/reports_screen.dart` (담당자별 통계 섹션)
+
+---
 ## 📅 2026-04-29
 
 ### ✅ 완료한 작업

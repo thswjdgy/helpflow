@@ -15,6 +15,7 @@ import '../../views/layout/main_layout.dart';
 import '../../views/reports/reports_screen.dart';
 import '../../views/settings/settings_screen.dart';
 import '../../views/tickets/ticket_detail_screen.dart';
+import '../../views/tickets/ticket_edit_screen.dart';
 import '../../views/tickets/ticket_form_screen.dart';
 import '../../views/tickets/ticket_list_screen.dart';
 import 'router_notifier.dart';
@@ -98,6 +99,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'new',
                 builder: (context, state) => const TicketFormScreen(),
+              ),
+              // 티켓 수정 (/tickets/edit/:id) — :id 보다 먼저 선언
+              GoRoute(
+                path: 'edit/:id',
+                builder: (context, state) {
+                  final ticketId = state.pathParameters['id'] ?? '';
+                  return TicketEditScreen(ticketId: ticketId);
+                },
               ),
               // 티켓 상세 (/tickets/:id)
               GoRoute(

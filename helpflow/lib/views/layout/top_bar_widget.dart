@@ -33,6 +33,8 @@ class TopBarWidget extends ConsumerWidget implements PreferredSizeWidget {
   String _getPageTitle() {
     if (currentLocation.startsWith('/tickets/new')) {
       return AppStrings.ticketFormTitleNew;
+    } else if (currentLocation.startsWith('/tickets/edit/')) {
+      return AppStrings.ticketEditTitle;
     } else if (currentLocation.startsWith('/tickets/') &&
         currentLocation.length > '/tickets/'.length) {
       return AppStrings.ticketDetailTitle;

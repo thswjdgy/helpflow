@@ -76,13 +76,15 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
     super.dispose();
   }
 
-  /// 현재 상태에서 다음 상태 반환 (resolved/closed 이후는 null)
+  /// 현재 상태에서 다음 상태 반환 (closed 이후는 null — 최종 상태)
   String? _nextStatus(String current) {
     switch (current) {
       case 'new':
         return 'in_progress';
       case 'in_progress':
         return 'resolved';
+      case 'resolved':
+        return 'closed';
       default:
         return null;
     }
@@ -146,10 +148,16 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
     }
 
     // USER 역할은 읽기 전용 (상태 변경·메모 입력 비활성)
-    final userRole = ref.watch(authProvider).valueOrNull?.role ?? 'user';
+    final authUser = ref.watch(authProvider).valueOrNull;
+    final userRole = authUser?.role ?? 'user';
+    final userEmail = authUser?.email ?? '';
     final isReadOnly = userRole == 'user';
     final isAdmin = userRole == 'admin';
     final next = isReadOnly ? null : _nextStatus(ticket.status);
+
+    // 편집 가능 조건: AGENT·ADMIN은 항상 / USER는 본인 'new' 티켓만
+    final canEdit = userRole != 'user' ||
+        (ticket.reporterEmail == userEmail && ticket.status == 'new');
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -159,6 +167,19 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
           children: [
             // 티켓 기본 정보 카드
             _TicketInfoSection(ticket: ticket),
+
+            // 편집 가능 시 수정 버튼 표시
+            if (canEdit) ...[
+              const SizedBox(height: HelpFlowSpacing.md),
+              Align(
+                alignment: Alignment.centerRight,
+                child: OutlinedButton.icon(
+                  onPressed: () => context.go('/tickets/edit/${ticket.id}'),
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('티켓 수정'),
+                ),
+              ),
+            ],
 
             // 첨부 이미지 갤러리 (이미지가 있을 때만 표시)
             if (ticket.imageUrls.isNotEmpty) ...[
@@ -773,4 +794,6 @@ class _ImageGallerySection extends StatelessWidget {
 // _ImageGallerySection : 첨부 이미지 가로 스크롤 갤러리 (kIsWeb 분기로 크로스 플랫폼 대응)
 // _NoteHistorySection  : 저장된 처리 메모 이력 목록 (notesForTicketProvider 구독, 자동 갱신)
 // _NoteItem            : 개별 메모 아이템 (작성자·시각·내용)
+// 상태 흐름: new → in_progress → resolved → closed (closed 이후 버튼 없음)
+// 편집 버튼: AGENT·ADMIN 항상 / USER는 본인·'new' 티켓만 표시
 // ticketsProvider 구독: 상태 변경·담당자 배정 시 화면이 자동으로 재빌드됩니다.

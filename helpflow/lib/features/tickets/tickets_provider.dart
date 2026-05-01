@@ -104,6 +104,28 @@ class TicketsNotifier extends Notifier<List<MockTicket>> {
         );
   }
 
+  /// 티켓 내용 수정 — 제목·설명·카테고리·우선순위 업데이트 (불변 업데이트)
+  void updateTicket({
+    required String ticketId,
+    required String title,
+    required String description,
+    required String category,
+    required String priority,
+  }) {
+    state = [
+      for (final t in state)
+        if (t.id == ticketId)
+          t.copyWith(
+            title: title,
+            description: description,
+            category: category,
+            priority: priority,
+          )
+        else
+          t,
+    ];
+  }
+
   /// 담당 에이전트 배정 — state 불변 업데이트 후 알림 추가
   void assignAgent(String ticketId, String agentId, String agentName) {
     // 알림용으로 티켓 정보 조회
@@ -136,7 +158,8 @@ final ticketsProvider =
 
 // [파일 요약]
 // 목업 기반 티켓 전역 상태 Provider입니다.
-// TicketsNotifier: addTicket / updateStatus / assignAgent CRUD 메서드
+// TicketsNotifier: addTicket / updateTicket / updateStatus / assignAgent CRUD 메서드
+//   updateTicket(): 제목·설명·카테고리·우선순위 수정 (알림 없음 — 내용 수정은 조용히 처리)
 //   - 각 CRUD 수행 시 notificationsProvider에 자동으로 알림 추가
 //   - ID는 현재 최대 번호 + 1 방식으로 자동 생성 (HF-013, HF-014, …)
 // ticketsProvider: 앱 전역 티켓 목록 NotifierProvider
