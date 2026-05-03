@@ -30,6 +30,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   /// 비밀번호 확인 숨김 여부
   bool _obscureConfirm = true;
 
+  /// 현재 비밀번호 강도 점수 (0~4) — 강도 표시기 갱신용
+  int _passwordStrength = 0;
+
   @override
   void dispose() {
     _emailCtrl.dispose();
@@ -117,6 +120,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   TextFormField(
                     controller: _passwordCtrl,
                     obscureText: _obscurePassword,
+                    onChanged: (v) => setState(
+                        () => _passwordStrength =
+                            AppValidators.passwordStrength(v)),
                     decoration: InputDecoration(
                       labelText: '비밀번호',
                       prefixIcon: const Icon(Icons.lock_outlined),
@@ -130,11 +136,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             setState(() => _obscurePassword = !_obscurePassword),
                       ),
                     ),
-                    validator: AppValidators.compose([
-                      (v) => AppValidators.required(v, fieldName: '비밀번호'),
-                      AppValidators.minLength(6, fieldName: '비밀번호'),
-                    ]),
+                    validator: AppValidators.password,
                   ),
+                  const SizedBox(height: 8),
+                  // 비밀번호 강도 표시기
+                  _PasswordStrengthBar(strength: _passwordStrength),
                   const SizedBox(height: 16),
 
                   // ── 비밀번호 확인 입력 ───────────────────────
@@ -225,10 +231,56 @@ class _RoleSelector extends StatelessWidget {
   }
 }
 
+// ── 비밀번호 강도 표시기 ──────────────────────────────────────
+/// 0~4 강도 점수를 LinearProgressIndicator + 레이블로 시각화
+class _PasswordStrengthBar extends StatelessWidget {
+  final int strength; // 0~4
+
+  const _PasswordStrengthBar({required this.strength});
+
+  static const _labels = ['', '약함', '보통', '강함', '매우 강함'];
+  static const _colors = [
+    Colors.transparent,
+    AppColors.error,
+    AppColors.warning,
+    AppColors.success,
+    AppColors.success,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    if (strength == 0) return const SizedBox.shrink();
+    final color = _colors[strength];
+    final label = _labels[strength];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: strength / 4,
+            backgroundColor:
+                Theme.of(context).colorScheme.outlineVariant.withAlpha(80),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+            minHeight: 4,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500),
+        ),
+      ],
+    );
+  }
+}
+
 // [파일 요약]
 // 회원가입 화면입니다.
 // RegisterScreen: ConsumerStatefulWidget — 이메일·비밀번호·역할 입력 폼
 // _RoleSelector: user/agent/admin 역할을 SegmentedButton으로 선택
 // 비밀번호 확인 로직은 _validateConfirm()에서 _passwordCtrl과 비교합니다.
 // 회원가입 성공 시 authProvider.register()가 자동 로그인 처리합니다.
+// _PasswordStrengthBar: 0~4 강도 점수 → LinearProgressIndicator + 색상 레이블
+// AppValidators.password() 적용 — 8자+, 영문+숫자 조합 필수
 // Firestore 연동 시 register() 내부에서 Firebase 호출로 교체합니다.

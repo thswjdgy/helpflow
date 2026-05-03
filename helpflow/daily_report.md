@@ -1,4 +1,51 @@
 ---
+## 📅 2026-05-03
+
+### ✅ 완료한 작업
+
+**[13주차 — 보안 점검: 비밀번호 강도·로그인 잠금·라우트 가드·세션 만료]**
+
+**[작업 1] validators.dart 수정 — 비밀번호 검증 메서드 추가**
+- `password()`: 8자 이상 + 영문+숫자 조합 필수 검증
+- `passwordStrength(password)`: 0~4 강도 점수 반환 (길이·영문·숫자·특수문자 조합 분석)
+
+**[작업 2] register_screen.dart 수정 — 비밀번호 강도 표시기**
+- `_passwordStrength` 상태 변수: `onChanged`에서 `AppValidators.passwordStrength()` 호출로 실시간 갱신
+- `_PasswordStrengthBar` 위젯 신규: LinearProgressIndicator + 색상 레이블 (약함/보통/강함/매우 강함)
+  - 약함: `AppColors.error` / 보통: `AppColors.warning` / 강함·매우 강함: `AppColors.success`
+- 기존 `minLength(6)` validator → `AppValidators.password()` 교체
+
+**[작업 3] login_screen.dart 수정 — 이메일 검증 강화 + 로그인 실패 잠금**
+- 이메일 validator: `contains('@')` 단순 체크 → `AppValidators.email()` 정규식 검증으로 교체
+- `_failCount`: 연속 실패 횟수 카운터
+- `_lockedUntil`: 잠금 해제 시각 (3회 연속 실패 시 30초 잠금)
+- 잠금 중 버튼 비활성화 + 남은 시간 표시 안내 문구
+- 실패 1~2회: 경고 문구 (n/3회) 표시
+
+**[작업 4] app_router.dart 수정 — ADMIN 전용 라우트 가드**
+- redirect 함수에 역할 기반 가드 추가 (④번 조건)
+- `/assets` 경로 접근 시 ADMIN이 아니면 `/dashboard`로 리다이렉트
+- 라우팅 레벨에서 ADMIN 전용 기능 접근 차단
+
+**[작업 5] auth_provider.dart 수정 — 24시간 세션 만료**
+- `signIn()` / `register()`: `lastLoginAt` (millisecondsSinceEpoch) Hive 저장
+- `build()`: 저장된 `lastLoginAt` 조회 → 24시간 초과 시 Hive 정리 후 null 반환 (자동 로그아웃)
+- `signOut()`: `lastLoginAt` 함께 삭제
+
+### 🐛 발생한 오류 & 해결 방법
+- `passwordStrength()` if문 블록 없음 lint → 중괄호 추가로 해결
+
+### 📦 커밋 내역
+- `feat: 보안 점검 — 비밀번호 강도·로그인 잠금·라우트 가드·세션 만료 (13주차)` (0fe45a7)
+
+### 🔗 연관 파일 목록 (신규/수정)
+- `lib/core/utils/validators.dart` (password·passwordStrength 추가)
+- `lib/features/auth/register_screen.dart` (_PasswordStrengthBar, password validator)
+- `lib/features/auth/login_screen.dart` (email validator 개선, 실패 잠금)
+- `lib/core/router/app_router.dart` (ADMIN 전용 /assets 라우트 가드)
+- `lib/features/auth/auth_provider.dart` (lastLoginAt 세션 만료)
+
+---
 ## 📅 2026-05-01
 
 ### ✅ 완료한 작업

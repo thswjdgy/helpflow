@@ -43,6 +43,33 @@ class AppValidators {
     return null;
   }
 
+  /// 비밀번호 강도 검증 (최소 8자, 영문+숫자 조합 필수)
+  static String? password(String? value) {
+    if (value == null || value.isEmpty) return '비밀번호를 입력해주세요.';
+    if (value.length < 8) return '비밀번호는 8자 이상이어야 합니다.';
+    final hasLetter = RegExp(r'[a-zA-Z]').hasMatch(value);
+    final hasDigit = RegExp(r'[0-9]').hasMatch(value);
+    if (!hasLetter || !hasDigit) return '비밀번호는 영문과 숫자를 모두 포함해야 합니다.';
+    return null;
+  }
+
+  /// 비밀번호 강도 점수 반환 (0~4) — UI 강도 표시기용
+  /// 0: 없음, 1: 약함, 2: 보통, 3: 강함, 4: 매우 강함
+  static int passwordStrength(String password) {
+    if (password.isEmpty) return 0;
+    int score = 0;
+    if (password.length >= 6) score++;
+    if (password.length >= 8) score++;
+    if (RegExp(r'[a-zA-Z]').hasMatch(password) &&
+        RegExp(r'[0-9]').hasMatch(password)) {
+      score++;
+    }
+    if (RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(password)) {
+      score++;
+    }
+    return score;
+  }
+
   /// 여러 검증 함수를 순서대로 실행 (첫 오류에서 중단)
   static String? Function(String?) compose(
     List<String? Function(String?)> validators,

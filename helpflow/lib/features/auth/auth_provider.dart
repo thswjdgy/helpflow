@@ -35,13 +35,21 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
   Future<AuthUser?> build() async {
     final box = await Hive.openBox(_boxName);
 
-    // 저장된 uid, email, role 읽기
+    // 저장된 uid, email, role, lastLoginAt 읽기
     final uid = box.get('uid') as String?;
     final email = box.get('email') as String?;
     final role = box.get('role') as String? ?? 'user';
+    final lastLoginMs = box.get('lastLoginAt') as int?;
 
-    // 둘 다 있을 때만 로그인 상태로 간주
     if (uid != null && email != null) {
+      // 24시간 세션 만료 체크 — 마지막 로그인으로부터 24시간 초과 시 자동 로그아웃
+      if (lastLoginMs != null) {
+        final lastLogin = DateTime.fromMillisecondsSinceEpoch(lastLoginMs);
+        if (DateTime.now().difference(lastLogin).inHours >= 24) {
+          await box.deleteAll(['uid', 'email', 'role', 'lastLoginAt']);
+          return null; // 세션 만료
+        }
+      }
       return AuthUser(uid: uid, email: email, role: role);
     }
     return null; // 비로그인 상태
@@ -68,10 +76,11 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
         role: savedRole,
       );
 
-      // Hive에 인증 정보 영속화
+      // Hive에 인증 정보 + 로그인 시각 영속화
       await box.put('uid', user.uid);
       await box.put('email', user.email);
       await box.put('role', user.role);
+      await box.put('lastLoginAt', DateTime.now().millisecondsSinceEpoch);
 
       state = AsyncData(user); // 로그인 성공
     } catch (e, st) {
@@ -98,10 +107,11 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
         role: role,
       );
 
-      // Hive에 인증 정보 영속화
+      // Hive에 인증 정보 + 로그인 시각 영속화
       await box.put('uid', user.uid);
       await box.put('email', user.email);
       await box.put('role', user.role);
+      await box.put('lastLoginAt', DateTime.now().millisecondsSinceEpoch);
 
       state = AsyncData(user); // 회원가입 + 자동 로그인 성공
     } catch (e, st) {
@@ -113,7 +123,7 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
   /// TODO: Firebase 연동 시 → FirebaseAuth.instance.signOut() 추가
   Future<void> signOut() async {
     final box = await Hive.openBox(_boxName);
-    await box.deleteAll(['uid', 'email', 'role']); // 저장된 인증 정보 삭제
+    await box.deleteAll(['uid', 'email', 'role', 'lastLoginAt']); // 저장된 인증 정보 삭제
     state = const AsyncData(null); // 비로그인 상태로 전환
   }
 }
@@ -128,5 +138,7 @@ final authProvider = AsyncNotifierProvider<AuthNotifier, AuthUser?>(
 // 파일명: auth_provider.dart
 // 역할: Riverpod 기반 인증 상태 관리 (로그인/로그아웃/회원가입, Hive 영속화)
 // 주요 클래스/함수: AuthUser(uid·email·role), AuthNotifier, authProvider
+// 보안: lastLoginAt Hive 저장 → build()에서 24시간 초과 시 자동 세션 만료
+//       ADMIN 전용 /assets 라우트 가드는 app_router.dart redirect에서 처리
 // 연관 파일: router_notifier.dart, login_screen.dart, register_screen.dart, app_router.dart
 // ============================================================

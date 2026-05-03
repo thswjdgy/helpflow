@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
+import '../../core/utils/validators.dart';
 import 'auth_provider.dart';
 
 /// 로그인 화면 위젯
@@ -23,6 +24,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordCtrl = TextEditingController();
   bool _obscure = true; // 비밀번호 숨김 여부
 
+  /// 연속 로그인 실패 횟수 (3회 초과 시 잠금)
+  int _failCount = 0;
+
+  /// 잠금 해제 시각 (null이면 잠금 없음)
+  DateTime? _lockedUntil;
+
   @override
   void dispose() {
     // 컨트롤러 메모리 해제
@@ -31,13 +38,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  /// 로그인 버튼 핸들러: 폼 검증 후 AuthNotifier.signIn() 호출
+  /// 현재 잠금 상태 여부 확인
+  bool get _isLocked =>
+      _lockedUntil != null && DateTime.now().isBefore(_lockedUntil!);
+
+  /// 잠금 남은 시간(초) 반환
+  int get _lockSecondsLeft =>
+      _isLocked ? _lockedUntil!.difference(DateTime.now()).inSeconds + 1 : 0;
+
+  /// 로그인 버튼 핸들러 — 잠금 확인 후 폼 검증, 실패 시 카운터 증가
   Future<void> _onLoginPressed() async {
+    if (_isLocked) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
+
     await ref.read(authProvider.notifier).signIn(
           email: _emailCtrl.text.trim(),
           password: _passwordCtrl.text,
         );
+
+    // 로그인 결과 확인 — 실패 시 카운터 증가
+    final result = ref.read(authProvider);
+    if (result is AsyncError) {
+      setState(() {
+        _failCount++;
+        // 3회 연속 실패 시 30초 잠금
+        if (_failCount >= 3) {
+          _lockedUntil = DateTime.now().add(const Duration(seconds: 30));
+          _failCount = 0;
+        }
+      });
+    } else {
+      // 성공 시 카운터 초기화
+      setState(() => _failCount = 0);
+    }
   }
 
   @override
@@ -94,10 +127,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       labelText: '이메일',
                       prefixIcon: Icon(Icons.email_outlined),
                     ),
-                    validator: (v) =>
-                        (v == null || !v.contains('@'))
-                            ? '올바른 이메일을 입력하세요'
-                            : null,
+                    validator: AppValidators.email,
                   ),
                   const SizedBox(height: 16),
 
@@ -124,10 +154,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 32),
 
+                  // 로그인 실패 횟수 안내 (1~2회)
+                  if (_failCount > 0 && !_isLocked)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        '로그인 실패 $_failCount/3회 — 3회 실패 시 30초 잠금',
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.warning),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+
+                  // 잠금 중 안내
+                  if (_isLocked)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        '로그인이 잠겼습니다. $_lockSecondsLeft초 후 다시 시도하세요.',
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.error),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+
                   // ── 로그인 버튼 ────────────────────────────────
                   FilledButton(
-                    // 로딩 중이면 버튼 비활성화
-                    onPressed: isLoading ? null : _onLoginPressed,
+                    // 로딩 중 또는 잠금 중이면 버튼 비활성화
+                    onPressed: (isLoading || _isLocked) ? null : _onLoginPressed,
                     child: isLoading
                         ? const SizedBox(
                             height: 20,
@@ -162,4 +216,5 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 // 역할: 이메일/비밀번호 로그인 화면 UI 및 폼 처리
 // 주요 클래스/함수: LoginScreen, _LoginScreenState
 // 연관 파일: auth_provider.dart, app_router.dart
+// 보안: AppValidators.email() 정규식 검증, 3회 실패 → 30초 잠금 (_failCount, _lockedUntil)
 // ============================================================

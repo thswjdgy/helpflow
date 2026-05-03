@@ -58,6 +58,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       // ③ 로그인 완료 + 공개 경로 → /dashboard 로 자동 이동
       if (isLoggedIn && isPublicPath) return '/dashboard';
 
+      // ④ 역할 기반 라우트 가드 — ADMIN 전용 /assets 접근 제어
+      //    비관리자가 /assets 접근 시 /dashboard 로 리다이렉트
+      if (isLoggedIn && path.startsWith('/assets')) {
+        final role = authState.valueOrNull?.role ?? 'user';
+        if (role != 'admin') return '/dashboard';
+      }
+
       return null; // 리다이렉트 필요 없음
     },
 
