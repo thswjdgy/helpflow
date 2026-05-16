@@ -43,11 +43,47 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
   /// image_picker 인스턴스
   final _picker = ImagePicker();
 
+  /// 선택된 SLA 마감 기한 (null이면 미설정)
+  DateTime? _dueDate;
+
   @override
   void dispose() {
     _titleCtrl.dispose();
     _contentCtrl.dispose();
     super.dispose();
+  }
+
+  /// 마감 기한 선택 핸들러 — 날짜 선택 후 시간 선택
+  Future<void> _selectDueDate() async {
+    final now = DateTime.now();
+    final initial = _dueDate ?? now.add(const Duration(days: 1));
+
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      // 과거 날짜는 선택 불가 (오늘부터 1년)
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (pickedDate == null || !mounted) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: _dueDate != null
+          ? TimeOfDay.fromDateTime(_dueDate!)
+          : const TimeOfDay(hour: 18, minute: 0),
+    );
+    if (!mounted) return;
+
+    setState(() {
+      _dueDate = DateTime(
+        pickedDate.year,
+        pickedDate.month,
+        pickedDate.day,
+        pickedTime?.hour ?? 18,
+        pickedTime?.minute ?? 0,
+      );
+    });
   }
 
   /// 이미지 선택 핸들러 — 갤러리에서 최대 3장 선택
@@ -82,6 +118,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
           category: _category,
           priority: _priority,
           reporterEmail: ref.read(authProvider).valueOrNull?.email ?? '',
+          dueDate: _dueDate,
           assetId: selectedAsset?.id,
           assetName: selectedAsset?.name,
           imageUrls: _selectedImages.map((x) => x.path).toList(),
@@ -119,11 +156,14 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
           assets: assets,
           selectedAssetId: _selectedAssetId,
           selectedImages: _selectedImages,
+          dueDate: _dueDate,
           onCategoryChanged: (v) => setState(() => _category = v),
           onPriorityChanged: (v) => setState(() => _priority = v),
           onAssetChanged: (v) => setState(() => _selectedAssetId = v),
           onPickImages: _pickImages,
           onRemoveImage: _removeImage,
+          onPickDueDate: _selectDueDate,
+          onClearDueDate: () => setState(() => _dueDate = null),
           onSubmit: _onSubmit,
         ),
       ),
@@ -143,11 +183,14 @@ class _FormBody extends StatelessWidget {
   final List<MockAsset> assets;
   final String? selectedAssetId;
   final List<XFile> selectedImages;
+  final DateTime? dueDate;
   final ValueChanged<String> onCategoryChanged;
   final ValueChanged<String> onPriorityChanged;
   final ValueChanged<String?> onAssetChanged;
   final VoidCallback onPickImages;
   final ValueChanged<int> onRemoveImage;
+  final VoidCallback onPickDueDate;
+  final VoidCallback onClearDueDate;
   final VoidCallback onSubmit;
 
   // 카테고리 옵션 (영문 key → 한국어 레이블)
@@ -176,11 +219,14 @@ class _FormBody extends StatelessWidget {
     required this.assets,
     required this.selectedAssetId,
     required this.selectedImages,
+    required this.dueDate,
     required this.onCategoryChanged,
     required this.onPriorityChanged,
     required this.onAssetChanged,
     required this.onPickImages,
     required this.onRemoveImage,
+    required this.onPickDueDate,
+    required this.onClearDueDate,
     required this.onSubmit,
   });
 
@@ -255,6 +301,44 @@ class _FormBody extends StatelessWidget {
             onChanged: (v) {
               if (v != null) onPriorityChanged(v);
             },
+          ),
+
+          const SizedBox(height: HelpFlowSpacing.xl),
+
+          // ── 마감 기한 (SLA) 선택 ──────────────────────────
+          Text('마감 기한 / SLA (선택)', style: HelpFlowTextStyles.body1),
+          const SizedBox(height: HelpFlowSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onPickDueDate,
+                  icon: const Icon(Icons.calendar_today_outlined, size: 16),
+                  label: Text(
+                    dueDate != null
+                        // 날짜가 선택된 경우 "YYYY.MM.DD HH:mm" 형식 표시
+                        ? '${dueDate!.year}.${dueDate!.month.toString().padLeft(2, '0')}.${dueDate!.day.toString().padLeft(2, '0')} '
+                            '${dueDate!.hour.toString().padLeft(2, '0')}:${dueDate!.minute.toString().padLeft(2, '0')}'
+                        : '기한 없음',
+                    style: TextStyle(
+                      color: dueDate != null
+                          ? HelpFlowColors.gray700
+                          : HelpFlowColors.gray400,
+                    ),
+                  ),
+                ),
+              ),
+              // X 버튼 — 선택된 기한이 있을 때만 표시
+              if (dueDate != null) ...[
+                const SizedBox(width: HelpFlowSpacing.sm),
+                IconButton(
+                  onPressed: onClearDueDate,
+                  icon: const Icon(Icons.close, size: 18),
+                  tooltip: '기한 제거',
+                  color: HelpFlowColors.gray400,
+                ),
+              ],
+            ],
           ),
 
           const SizedBox(height: HelpFlowSpacing.xl),
@@ -451,10 +535,13 @@ class _DropdownField<T> extends StatelessWidget {
 // [파일 요약]
 // 새 티켓 접수 폼 화면입니다.
 // TicketFormScreen: ConsumerStatefulWidget — authProvider 이메일, assetsProvider 자산 목록 구독
+//   _dueDate       : DateTime? — SLA 마감 기한 (미설정 시 null)
+//   _selectDueDate(): showDatePicker → showTimePicker 순서로 마감 기한 선택
 //   _selectedImages: List<XFile> — 갤러리에서 선택한 이미지 (최대 3장)
-//   _pickImages(): ImagePicker.pickMultiImage(limit) 호출
-// _FormBody: 6개 섹션(제목/내용/카테고리/우선순위/연관 자산/이미지 첨부) + 제출 버튼
+//   _pickImages()  : ImagePicker.pickMultiImage(limit) 호출
+// _FormBody: 7개 섹션(제목/내용/카테고리/우선순위/마감 기한/연관 자산/이미지 첨부) + 제출 버튼
+//   마감 기한 섹션: OutlinedButton(날짜·시각 표시) + X 버튼(기한 제거)
 //   이미지 섹션: 썸네일 가로 스크롤 + X 버튼 제거 + 추가 버튼
 //   kIsWeb 분기: 웹에서는 이미지 미리보기 대신 placeholder 아이콘 표시
 // _DropdownField: nullable 제네릭 드롭다운 공통 래퍼
-// 제출 시 ticketsProvider.addTicket(imageUrls: paths) 포함 호출 → SnackBar → /tickets
+// 제출 시 ticketsProvider.addTicket(dueDate, imageUrls) 포함 호출 → SnackBar → /tickets

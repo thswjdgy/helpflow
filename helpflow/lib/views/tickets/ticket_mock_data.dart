@@ -2,6 +2,54 @@
 // Firestore 연동 전까지 목록·상세 화면에서 공통으로 사용하는 임시 데이터입니다.
 // Firebase 연동 주차에 이 파일을 제거하고 ticketProvider로 교체합니다.
 
+// ── SLA 상태 정의 ─────────────────────────────────────────────
+
+/// SLA(서비스 수준 계약) 처리 상태
+enum SlaStatus {
+  /// 마감 기한 내 정상 처리 중
+  normal,
+
+  /// 마감 기한까지 24시간 미만 남음
+  warning,
+
+  /// 마감 기한 초과
+  overdue,
+}
+
+/// 티켓의 현재 SLA 상태를 계산합니다.
+/// - dueDate가 없거나 티켓이 완료/종료 상태면 null 반환 (배지 숨김)
+/// - 마감 초과: SlaStatus.overdue
+/// - 24시간 이내: SlaStatus.warning
+/// - 그 외: SlaStatus.normal
+SlaStatus? getSlaStatus(MockTicket ticket) {
+  if (ticket.dueDate == null) return null;
+  // 완료·종료된 티켓은 SLA 배지 표시 안 함
+  if (ticket.status == 'resolved' || ticket.status == 'closed') return null;
+  final diff = ticket.dueDate!.difference(DateTime.now());
+  if (diff.isNegative) return SlaStatus.overdue;
+  if (diff.inHours < 24) return SlaStatus.warning;
+  return SlaStatus.normal;
+}
+
+/// 마감 기한까지 남은 시간(또는 초과 시간)을 한국어 문자열로 반환합니다.
+/// 예: "3일 2시간 남음", "1시간 30분 초과"
+String slaRemainingLabel(DateTime dueDate) {
+  final diff = dueDate.difference(DateTime.now());
+  if (diff.isNegative) {
+    // 초과된 경우 — 절댓값으로 표시
+    final abs = diff.abs();
+    if (abs.inDays > 0) return '${abs.inDays}일 ${abs.inHours % 24}시간 초과';
+    if (abs.inHours > 0) return '${abs.inHours}시간 ${abs.inMinutes % 60}분 초과';
+    return '${abs.inMinutes}분 초과';
+  }
+  // 남은 경우
+  if (diff.inDays > 0) return '${diff.inDays}일 ${diff.inHours % 24}시간 남음';
+  if (diff.inHours > 0) return '${diff.inHours}시간 ${diff.inMinutes % 60}분 남음';
+  return '${diff.inMinutes}분 남음';
+}
+
+// ── 목업 티켓 데이터 모델 ─────────────────────────────────────
+
 /// 목업 티켓 데이터 모델
 /// shared/models/ticket_model.dart (Firestore 연동용)과 동일한 필드 구조를 유지합니다.
 class MockTicket {
@@ -29,6 +77,9 @@ class MockTicket {
   /// 티켓 접수 일시
   final DateTime createdAt;
 
+  /// SLA 마감 기한 (설정하지 않으면 null)
+  final DateTime? dueDate;
+
   /// 배정된 에이전트 ID (미배정 시 null)
   final String? agentId;
 
@@ -53,6 +104,7 @@ class MockTicket {
     required this.category,
     required this.reporterEmail,
     required this.createdAt,
+    this.dueDate,
     this.agentId,
     this.agentName,
     this.assetId,
@@ -61,6 +113,7 @@ class MockTicket {
   });
 
   /// 일부 필드만 바꾼 복사본 반환 (Provider에서 불변 업데이트에 사용)
+  /// [clearDueDate] true이면 dueDate를 null로 초기화 (명시적 제거 시 사용)
   MockTicket copyWith({
     String? id,
     String? title,
@@ -70,6 +123,8 @@ class MockTicket {
     String? category,
     String? reporterEmail,
     DateTime? createdAt,
+    DateTime? dueDate,
+    bool clearDueDate = false,
     String? agentId,
     String? agentName,
     String? assetId,
@@ -85,6 +140,8 @@ class MockTicket {
       category: category ?? this.category,
       reporterEmail: reporterEmail ?? this.reporterEmail,
       createdAt: createdAt ?? this.createdAt,
+      // clearDueDate=true이면 null로, 아니면 새 값 또는 기존 값 유지
+      dueDate: clearDueDate ? null : (dueDate ?? this.dueDate),
       agentId: agentId ?? this.agentId,
       agentName: agentName ?? this.agentName,
       assetId: assetId ?? this.assetId,
@@ -96,6 +153,7 @@ class MockTicket {
 
 /// 목업 티켓 목록 (12건)
 /// createdAt은 앱 실행 시점 기준으로 상대 시간 계산에 사용됩니다.
+/// dueDate: 우선순위별 SLA 기준 (critical=4h, high=24h, medium=72h, low=168h) 적용
 final List<MockTicket> kMockTickets = [
   MockTicket(
     id: 'HF-001',
@@ -106,6 +164,8 @@ final List<MockTicket> kMockTickets = [
     category: 'network',
     reporterEmail: 'kim@company.com',
     createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
+    // critical 4h SLA → 접수 후 3.5h 남음 (정상)
+    dueDate: DateTime.now().add(const Duration(hours: 3, minutes: 30)),
   ),
   MockTicket(
     id: 'HF-002',
@@ -116,6 +176,8 @@ final List<MockTicket> kMockTickets = [
     category: 'software',
     reporterEmail: 'lee@company.com',
     createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+    // high 24h SLA → 22h 남음 (정상)
+    dueDate: DateTime.now().add(const Duration(hours: 22)),
     agentId: 'agent-001',
     agentName: '이지훈',
   ),
@@ -128,6 +190,8 @@ final List<MockTicket> kMockTickets = [
     category: 'hardware',
     reporterEmail: 'park@company.com',
     createdAt: DateTime.now().subtract(const Duration(hours: 5)),
+    // medium 72h SLA → 67h 남음 (정상)
+    dueDate: DateTime.now().add(const Duration(hours: 67)),
     agentId: 'agent-002',
     agentName: '박수진',
   ),
@@ -140,6 +204,8 @@ final List<MockTicket> kMockTickets = [
     category: 'software',
     reporterEmail: 'choi@company.com',
     createdAt: DateTime.now().subtract(const Duration(days: 1)),
+    // resolved → SLA 배지 미표시
+    dueDate: DateTime.now().subtract(const Duration(hours: 49)),
     agentId: 'agent-001',
     agentName: '이지훈',
   ),
@@ -152,6 +218,8 @@ final List<MockTicket> kMockTickets = [
     category: 'hardware',
     reporterEmail: 'jung@company.com',
     createdAt: DateTime.now().subtract(const Duration(days: 1, hours: 3)),
+    // low 168h SLA → 140.5h 남음 (정상)
+    dueDate: DateTime.now().add(const Duration(hours: 140, minutes: 30)),
   ),
   MockTicket(
     id: 'HF-006',
@@ -162,6 +230,8 @@ final List<MockTicket> kMockTickets = [
     category: 'software',
     reporterEmail: 'yoon@company.com',
     createdAt: DateTime.now().subtract(const Duration(days: 2)),
+    // high 24h SLA → 2일 전 접수, SLA 초과!
+    dueDate: DateTime.now().subtract(const Duration(days: 1)),
     agentId: 'agent-003',
     agentName: '최민준',
   ),
@@ -174,6 +244,8 @@ final List<MockTicket> kMockTickets = [
     category: 'network',
     reporterEmail: 'han@company.com',
     createdAt: DateTime.now().subtract(const Duration(days: 3)),
+    // closed → SLA 배지 미표시
+    dueDate: DateTime.now().subtract(const Duration(days: 2, hours: 1)),
   ),
   MockTicket(
     id: 'HF-008',
@@ -184,6 +256,8 @@ final List<MockTicket> kMockTickets = [
     category: 'software',
     reporterEmail: 'oh@company.com',
     createdAt: DateTime.now().subtract(const Duration(days: 4)),
+    // resolved → SLA 배지 미표시
+    dueDate: DateTime.now().subtract(const Duration(days: 3, hours: 8)),
     agentId: 'agent-004',
     agentName: '정다은',
   ),
@@ -196,6 +270,8 @@ final List<MockTicket> kMockTickets = [
     category: 'hardware',
     reporterEmail: 'shin@company.com',
     createdAt: DateTime.now().subtract(const Duration(days: 5)),
+    // high 24h SLA → 5일 전 접수, SLA 4일 초과!
+    dueDate: DateTime.now().subtract(const Duration(days: 4)),
   ),
   MockTicket(
     id: 'HF-010',
@@ -206,6 +282,8 @@ final List<MockTicket> kMockTickets = [
     category: 'etc',
     reporterEmail: 'back@company.com',
     createdAt: DateTime.now().subtract(const Duration(days: 6)),
+    // medium 72h SLA → 6일 전 접수, SLA 3일 초과!
+    dueDate: DateTime.now().subtract(const Duration(days: 3)),
     agentId: 'agent-005',
     agentName: '한승우',
   ),
@@ -218,6 +296,8 @@ final List<MockTicket> kMockTickets = [
     category: 'software',
     reporterEmail: 'kwon@company.com',
     createdAt: DateTime.now().subtract(const Duration(days: 7)),
+    // resolved → SLA 배지 미표시
+    dueDate: DateTime.now().subtract(const Duration(days: 6, hours: 20)),
     agentId: 'agent-001',
     agentName: '이지훈',
   ),
@@ -230,11 +310,18 @@ final List<MockTicket> kMockTickets = [
     category: 'network',
     reporterEmail: 'song@company.com',
     createdAt: DateTime.now().subtract(const Duration(days: 8)),
+    // medium 72h SLA → 8일 전 접수, SLA 5일 초과!
+    dueDate: DateTime.now().subtract(const Duration(days: 5)),
   ),
 ];
 
 // [파일 요약]
 // HelpFlow 티켓 목업 데이터 파일입니다.
-// MockTicket: Firestore TicketModel과 동일한 필드 구조의 순수 Dart 데이터 모델
-// kMockTickets: 12건의 목업 티켓 목록 (다양한 상태·우선순위·카테고리 조합)
+// SlaStatus         : SLA 처리 상태 열거형 (normal / warning / overdue)
+// getSlaStatus()    : 티켓의 현재 SLA 상태 반환 (완료·종료 티켓은 null)
+// slaRemainingLabel(): 마감 기한까지 남은/초과 시간 한국어 문자열
+// MockTicket        : Firestore TicketModel과 동일한 필드 구조의 순수 Dart 데이터 모델
+//   dueDate         : SLA 마감 기한 (nullable — 미설정 시 SLA 배지 미표시)
+//   copyWith()      : clearDueDate=true 시 dueDate를 null로 초기화
+// kMockTickets      : 12건 목업 (우선순위별 SLA 적용 — 일부 초과 시나리오 포함)
 // Firestore 연동 시 이 파일을 제거하고 ticketProvider(features/tickets/ticket_provider.dart)로 교체합니다.

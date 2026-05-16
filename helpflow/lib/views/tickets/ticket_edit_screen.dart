@@ -33,6 +33,9 @@ class _TicketEditScreenState extends ConsumerState<TicketEditScreen> {
   /// 선택된 우선순위
   String _priority = 'medium';
 
+  /// SLA 마감 기한 (null이면 미설정)
+  DateTime? _dueDate;
+
   /// 초기화 완료 여부 (최초 1회 pre-fill 후 true)
   bool _initialized = false;
 
@@ -50,12 +53,51 @@ class _TicketEditScreenState extends ConsumerState<TicketEditScreen> {
     _contentCtrl.text = ticket.description;
     _category = ticket.category;
     _priority = ticket.priority;
+    _dueDate = ticket.dueDate;
     _initialized = true;
+  }
+
+  /// 마감 기한 선택 핸들러 — 날짜 선택 후 시간 선택
+  Future<void> _selectDueDate() async {
+    final now = DateTime.now();
+    final initial = _dueDate ?? now.add(const Duration(days: 1));
+
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initial.isBefore(now) ? now : initial,
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (pickedDate == null || !mounted) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: _dueDate != null
+          ? TimeOfDay.fromDateTime(_dueDate!)
+          : const TimeOfDay(hour: 18, minute: 0),
+    );
+    if (!mounted) return;
+
+    setState(() {
+      _dueDate = DateTime(
+        pickedDate.year,
+        pickedDate.month,
+        pickedDate.day,
+        pickedTime?.hour ?? 18,
+        pickedTime?.minute ?? 0,
+      );
+    });
   }
 
   /// 수정 제출 핸들러 — ticketsProvider.updateTicket() 호출 후 상세 화면으로 복귀
   void _onSubmit() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    // 원본 기한이 있었는데 _dueDate가 null이면 명시적 제거
+    final original = ref.read(ticketsProvider)
+        .where((t) => t.id == widget.ticketId)
+        .firstOrNull;
+    final clearDueDate = original?.dueDate != null && _dueDate == null;
 
     ref.read(ticketsProvider.notifier).updateTicket(
           ticketId: widget.ticketId,
@@ -63,6 +105,8 @@ class _TicketEditScreenState extends ConsumerState<TicketEditScreen> {
           description: _contentCtrl.text.trim(),
           category: _category,
           priority: _priority,
+          dueDate: _dueDate,
+          clearDueDate: clearDueDate,
         );
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -106,8 +150,11 @@ class _TicketEditScreenState extends ConsumerState<TicketEditScreen> {
           contentCtrl: _contentCtrl,
           category: _category,
           priority: _priority,
+          dueDate: _dueDate,
           onCategoryChanged: (v) => setState(() => _category = v),
           onPriorityChanged: (v) => setState(() => _priority = v),
+          onPickDueDate: _selectDueDate,
+          onClearDueDate: () => setState(() => _dueDate = null),
           onSubmit: _onSubmit,
         ),
       ),
@@ -123,8 +170,11 @@ class _TicketEditBody extends StatelessWidget {
   final TextEditingController contentCtrl;
   final String category;
   final String priority;
+  final DateTime? dueDate;
   final ValueChanged<String> onCategoryChanged;
   final ValueChanged<String> onPriorityChanged;
+  final VoidCallback onPickDueDate;
+  final VoidCallback onClearDueDate;
   final VoidCallback onSubmit;
 
   static const Map<String, String> _categoryOptions = {
@@ -147,8 +197,11 @@ class _TicketEditBody extends StatelessWidget {
     required this.contentCtrl,
     required this.category,
     required this.priority,
+    required this.dueDate,
     required this.onCategoryChanged,
     required this.onPriorityChanged,
+    required this.onPickDueDate,
+    required this.onClearDueDate,
     required this.onSubmit,
   });
 
@@ -217,6 +270,42 @@ class _TicketEditBody extends StatelessWidget {
             },
           ),
 
+          const SizedBox(height: HelpFlowSpacing.xl),
+
+          // ── 마감 기한 (SLA) 선택 ──────────────────────────
+          Text('마감 기한 / SLA (선택)', style: HelpFlowTextStyles.body1),
+          const SizedBox(height: HelpFlowSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onPickDueDate,
+                  icon: const Icon(Icons.calendar_today_outlined, size: 16),
+                  label: Text(
+                    dueDate != null
+                        ? '${dueDate!.year}.${dueDate!.month.toString().padLeft(2, '0')}.${dueDate!.day.toString().padLeft(2, '0')} '
+                            '${dueDate!.hour.toString().padLeft(2, '0')}:${dueDate!.minute.toString().padLeft(2, '0')}'
+                        : '기한 없음',
+                    style: TextStyle(
+                      color: dueDate != null
+                          ? HelpFlowColors.gray700
+                          : HelpFlowColors.gray400,
+                    ),
+                  ),
+                ),
+              ),
+              if (dueDate != null) ...[
+                const SizedBox(width: HelpFlowSpacing.sm),
+                IconButton(
+                  onPressed: onClearDueDate,
+                  icon: const Icon(Icons.close, size: 18),
+                  tooltip: '기한 제거',
+                  color: HelpFlowColors.gray400,
+                ),
+              ],
+            ],
+          ),
+
           const SizedBox(height: HelpFlowSpacing.xxxl),
 
           // ── 수정 완료 버튼 ─────────────────────────────────
@@ -263,7 +352,9 @@ class _TicketEditBody extends StatelessWidget {
 
 // [파일 요약]
 // 티켓 수정 폼 화면입니다.
-// TicketEditScreen  : ConsumerStatefulWidget — ticketId로 ticketsProvider에서 티켓 조회 후 pre-fill
-//   _initFields()   : _initialized 플래그로 build 재호출 시 컨트롤러 덮어쓰기 방지
-//   _onSubmit()     : ticketsProvider.updateTicket() → SnackBar → /tickets/:id 복귀
-// _TicketEditBody   : 제목·내용·카테고리·우선순위 + AppValidators 검증 + '수정 완료' 버튼
+// TicketEditScreen   : ConsumerStatefulWidget — ticketId로 ticketsProvider에서 티켓 조회 후 pre-fill
+//   _dueDate         : DateTime? — SLA 마감 기한 (initFields에서 기존 값 복원)
+//   _selectDueDate() : showDatePicker → showTimePicker 순서로 마감 기한 변경
+//   _initFields()    : _initialized 플래그로 build 재호출 시 컨트롤러 덮어쓰기 방지
+//   _onSubmit()      : clearDueDate 플래그 계산 후 ticketsProvider.updateTicket() 호출
+// _TicketEditBody    : 제목·내용·카테고리·우선순위·마감 기한 + AppValidators + '수정 완료' 버튼

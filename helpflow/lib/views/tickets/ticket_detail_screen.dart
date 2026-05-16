@@ -11,6 +11,31 @@ import '../../features/tickets/tickets_provider.dart';
 import '../users/user_mock_data.dart';
 import 'ticket_mock_data.dart';
 
+// ── SLA 상태 색상 헬퍼 (이 파일 전용) ────────────────────────
+/// SLA 상태에 따른 색상 반환
+Color _slaColor(SlaStatus status) {
+  switch (status) {
+    case SlaStatus.overdue:
+      return AppColors.error;
+    case SlaStatus.warning:
+      return AppColors.warning;
+    case SlaStatus.normal:
+      return AppColors.success;
+  }
+}
+
+/// SLA 상태 레이블 반환
+String _slaLabel(SlaStatus status) {
+  switch (status) {
+    case SlaStatus.overdue:
+      return 'SLA 초과';
+    case SlaStatus.warning:
+      return 'SLA 임박';
+    case SlaStatus.normal:
+      return 'SLA 정상';
+  }
+}
+
 // ── 파일 레벨 헬퍼 함수 ──────────────────────────────────────
 // 여러 위젯에서 공통으로 사용하는 상태 변환 함수들
 
@@ -276,6 +301,8 @@ class _TicketInfoSection extends StatelessWidget {
                   '${ticket.createdAt.year}.${ticket.createdAt.month.toString().padLeft(2, '0')}.${ticket.createdAt.day.toString().padLeft(2, '0')}',
               colorScheme: colorScheme,
             ),
+            // 마감 기한 + SLA 상태 배지 (dueDate가 있을 때만 표시)
+            if (ticket.dueDate != null) _SlaRow(ticket: ticket),
             // 연관 자산이 있을 때만 표시 — 탭 시 자산 상세 화면으로 이동
             if (ticket.assetId != null)
               InkWell(
